@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="RoboCopy_X.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RoboCopy_X"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="RoboCopy-X">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <!-- Main Navigation -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Bar with subtle elevation -->
+        <Border Grid.Row="0"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Title Area -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="RoboCopy-X" 
+                               FontSize="24" 
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="Interface Gráfica Moderna para Robocopy" 
+                               FontSize="12" 
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Column="1" 
+                           Orientation="Horizontal" 
+                           Spacing="8"
+                           VerticalAlignment="Center">
+                    <Button x:Name="SettingsButton"
+                            Click="SettingsButton_Click"
+                            Style="{StaticResource SubtleButtonStyle}"
+                            ToolTipService.ToolTip="Configurações da aplicação">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE713;" FontSize="16"/>
+                            <TextBlock Text="Configurações"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content with proper spacing -->
+        <ScrollViewer Grid.Row="1" Padding="24,16,24,24" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Auto">
+            <Grid HorizontalAlignment="Center" MinWidth="800">
+                <StackPanel Spacing="24" MaxWidth="1200" HorizontalAlignment="Stretch">
+                
+                <!-- InfoBar for messages with improved visibility -->
+                <InfoBar x:Name="InfoBarMessage" 
+                         IsOpen="False" 
+                         IsClosable="True"/>
+
+                <!-- Paths Card with improved visual hierarchy -->
+                <Expander Header="Caminhos de Origem e Destino"
+                          IsExpanded="True"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch">
+                    <Expander.HeaderTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="20"/>
+                                <TextBlock Text="{Binding}" 
+                                          FontSize="16" 
+                                          FontWeight="SemiBold"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </Expander.HeaderTemplate>
+                    
+                    <StackPanel Spacing="16" Margin="0,16,0,0">
+                        <!-- Source Path with improved design -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Pasta de Origem" 
+                                       FontWeight="SemiBold"
+                                       FontSize="14"/>
+                            <Border x:Name="SourceDropBorder"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="8"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    AllowDrop="True"
+                                    DragOver="SourceDropBorder_DragOver"
+                                    Drop="SourceDropBorder_Drop"
+                                    DragLeave="SourceDropBorder_DragLeave"
+                                    Tapped="SourceDropBorder_Tapped"
+                                    MinHeight="80"
+                                    Padding="16">
+                                <Grid>
+                                    <StackPanel x:Name="SourcePlaceholder"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"
+                                               Spacing="8">
+                                        <FontIcon Glyph="&#xE8B7;" 
+                                                 FontSize="32" 
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="Arraste uma pasta aqui"
+                                                  FontWeight="SemiBold"
+                                                  TextAlignment="Center"/>
+                                        <TextBlock Text="ou clique para selecionar"
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                  TextAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="SourcePathText"
+                                              Text=""
+                                              VerticalAlignment="Center"
+                                              TextWrapping="Wrap"
+                                              FontFamily="Consolas"
+                                              FontSize="13"
+                                              Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Destination Path with improved design -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Pasta de Destino" 
+                                       FontWeight="SemiBold"
+                                       FontSize="14"/>
+                            <Border x:Name="DestinationDropBorder"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="8"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    AllowDrop="True"
+                                    DragOver="DestinationDropBorder_DragOver"
+                                    Drop="DestinationDropBorder_Drop"
+                                    DragLeave="DestinationDropBorder_DragLeave"
+                                    Tapped="DestinationDropBorder_Tapped"
+                                    MinHeight="80"
+                                    Padding="16">
+                                <Grid>
+                                    <StackPanel x:Name="DestinationPlaceholder"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"
+                                               Spacing="8">
+                                        <FontIcon Glyph="&#xE8B7;" 
+                                                 FontSize="32" 
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="Arraste uma pasta aqui"
+                                                  FontWeight="SemiBold"
+                                                  TextAlignment="Center"/>
+                                        <TextBlock Text="ou clique para selecionar"
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                  TextAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="DestinationPathText"
+                                              Text=""
+                                              VerticalAlignment="Center"
+                                              TextWrapping="Wrap"
+                                              FontFamily="Consolas"
+                                              FontSize="13"
+                                              Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Parameters in organized cards -->
+                <Expander Header="Parâmetros de Cópia"
+                          IsExpanded="True"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch">
+                    <Expander.HeaderTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE713;" FontSize="20"/>
+                                <TextBlock Text="{Binding}" 
+                                          FontSize="16" 
+                                          FontWeight="SemiBold"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </Expander.HeaderTemplate>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column -->
+                        <StackPanel Grid.Column="0" Spacing="20">
+                            <!-- Copy Options Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Opções de Cópia" 
+                                              FontWeight="SemiBold"
+                                              FontSize="14"/>
+                                    
+                                    <CheckBox x:Name="CopySubdirectoriesCheckBox" 
+                                              Content="Copiar subdiretórios incluindo vazios"
+                                              ToolTipService.ToolTip="Copia todos os subdiretórios, incluindo vazios (/E)"/>
+
+                                    <CheckBox x:Name="MirrorCheckBox" 
+                                              Content="Espelhar árvore de diretórios"
+                                              Checked="MirrorCheckBox_Checked">
+                                        <CheckBox.Resources>
+                                            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPointerOver" Color="#C42B1C"/>
+                                        </CheckBox.Resources>
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip>
+                                                <StackPanel>
+                                                    <TextBlock Text="Modo Espelho (/MIR)" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="⚠️ ATENÇÃO: Deleta arquivos no destino" 
+                                                              TextWrapping="Wrap"
+                                                              MaxWidth="200"
+                                                              Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </ToolTipService.ToolTip>
+                                    </CheckBox>
+
+                                    <CheckBox x:Name="ExcludeOlderCheckBox" 
+                                              Content="Excluir arquivos mais antigos"
+                                              ToolTipService.ToolTip="Não sobrescreve arquivos mais novos no destino (/XO)"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Attributes Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Atributos a Copiar" 
+                                              FontWeight="SemiBold"
+                                              FontSize="14"/>
+                                    
+                                    <CheckBox x:Name="CopyDataCheckBox" 
+                                              Content="Dados" 
+                                              IsChecked="True"
+                                              ToolTipService.ToolTip="Copia os dados dos arquivos (D)"/>
+
+                                    <CheckBox x:Name="CopyAttributesCheckBox" 
+                                              Content="Atributos" 
+                                              IsChecked="True"
+                                              ToolTipService.ToolTip="Copia atributos como somente leitura, oculto, etc. (A)"/>
+
+                                    <CheckBox x:Name="CopyTimestampsCheckBox" 
+                                              Content="Carimbos de data/hora" 
+                                              IsChecked="True"
+                                              ToolTipService.ToolTip="Preserva timestamps dos arquivos (T)"/>
+
+                                    <CheckBox x:Name="CopySecurityCheckBox" 
+                                              Content="Segurança NTFS"
+                                              ToolTipService.ToolTip="Copia informações de segurança NTFS/ACLs (S)"/>
+
+                                    <CheckBox x:Name="CopyOwnerCheckBox" 
+                                              Content="Informações de proprietário"
+                                              ToolTipService.ToolTip="Copia informações de proprietário (O)"/>
+
+                                    <CheckBox x:Name="CopyAuditCheckBox" 
+                                              Content="Informações de auditoria"
+                                              ToolTipService.ToolTip="Copia informações de auditoria (U)"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Performance Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Desempenho" 
+                                              FontWeight="SemiBold"
+                                              FontSize="14"/>
+                                    
+                                    <CheckBox x:Name="MultiThreadCheckBox" 
+                                              Content="Cópias multi-thread" 
+                                              IsChecked="True"
+                                              Checked="MultiThreadCheckBox_Checked"
+                                              Unchecked="MultiThreadCheckBox_Unchecked"
+                                              ToolTipService.ToolTip="Usa múltiplas threads para melhor desempenho (/MT)"/>
+                                    
+                                    <StackPanel Spacing="8" Margin="24,0,0,0">
+                                        <TextBlock Text="Número de threads:" 
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ComboBox x:Name="ThreadCountComboBox" 
+                                                  HorizontalAlignment="Stretch"
+                                                  SelectionChanged="ThreadCountComboBox_SelectionChanged"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Right Column -->
+                        <StackPanel Grid.Column="2" Spacing="20">
+                            <!-- Retry Options Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Tentativas" 
+                                              FontWeight="SemiBold"
+                                              FontSize="14"/>
+                                    
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Número de tentativas:" 
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ComboBox x:Name="RetryCountComboBox" 
+                                                  HorizontalAlignment="Stretch"
+                                                  SelectionChanged="RetryCountComboBox_SelectionChanged"
+                                                  ToolTipService.ToolTip="Tentativas em caso de falha (/R)"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Espera entre tentativas:" 
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ComboBox x:Name="WaitTimeComboBox" 
+                                                  HorizontalAlignment="Stretch"
+                                                  SelectionChanged="WaitTimeComboBox_SelectionChanged"
+                                                  ToolTipService.ToolTip="Tempo de espera entre tentativas (/W)"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Logging Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Log e Saída" 
+                                              FontWeight="SemiBold"
+                                              FontSize="14"/>
+                                    
+                                    <CheckBox x:Name="VerboseCheckBox" 
+                                              Content="Saída detalhada"
+                                              ToolTipService.ToolTip="Exibe informações detalhadas incluindo arquivos ignorados (/V)"/>
+
+                                    <CheckBox x:Name="NoProgressCheckBox" 
+                                              Content="Ocultar porcentagem"
+                                              ToolTipService.ToolTip="Não mostra porcentagem de progresso (/NP)"/>
+
+                                    <InfoBar Severity="Informational" IsOpen="True" IsClosable="False">
+                                        <InfoBar.Content>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="Logs são salvos automaticamente em:"/>
+                                                <LineBreak/>
+                                                <Run FontFamily="Consolas" FontSize="11" Text="RoboCopy-X/logs/"/>
+                                            </TextBlock>
+                                        </InfoBar.Content>
+                                    </InfoBar>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+
+                <!-- Action Buttons with improved design -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Executar Operação" 
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+                        
+                        <StackPanel Orientation="Horizontal" 
+                                   Spacing="12" 
+                                   HorizontalAlignment="Center">
+                            <Button x:Name="ExecuteButton" 
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="ExecuteButton_Click"
+                                    MinWidth="160"
+                                    Height="44"
+                                    CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE768;" FontSize="18"/>
+                                    <TextBlock Text="Executar" FontSize="15" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="CancelButton" 
+                                    Click="CancelButton_Click"
+                                    IsEnabled="False"
+                                    MinWidth="160"
+                                    Height="44"
+                                    CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE711;" FontSize="18"/>
+                                    <TextBlock Text="Cancelar" FontSize="15" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <ProgressBar x:Name="ProgressBar" 
+                                    IsIndeterminate="False" 
+                                    Visibility="Collapsed"
+                                    Height="4"
+                                    CornerRadius="2"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Hidden elements for code-behind compatibility -->
+        <Grid Visibility="Collapsed">
+            <StackPanel>
+                <TextBox x:Name="SourcePathTextBox"/>
+                <TextBox x:Name="DestinationPathTextBox"/>
+                <TextBox x:Name="CommandPreviewTextBox"/>
+                <NumberBox x:Name="ThreadCountNumberBox" Value="8"/>
+                <NumberBox x:Name="RetryCountNumberBox" Value="3"/>
+                <NumberBox x:Name="WaitTimeNumberBox" Value="5"/>
+                <ScrollViewer x:Name="OutputScrollViewer">
+                    <TextBlock x:Name="OutputTextBlock"/>
+                </ScrollViewer>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
