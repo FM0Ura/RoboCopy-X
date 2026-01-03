@@ -51,12 +51,13 @@ namespace RoboCopy_X.Helpers
                 Spacing = 12
             };
 
-            // Adicionar ícone
+            // Adicionar ícone com fonte explícita
             var icon = new FontIcon
             {
                 FontSize = 24,
                 Glyph = GetIconGlyph(dialogType),
-                Foreground = GetIconBrush(dialogType)
+                Foreground = GetIconBrush(dialogType),
+                FontFamily = new FontFamily("Segoe Fluent Icons")
             };
 
             stackPanel.Children.Add(icon);

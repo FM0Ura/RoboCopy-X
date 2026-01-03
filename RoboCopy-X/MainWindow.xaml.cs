@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -40,6 +40,18 @@ namespace RoboCopy_X
         private CancellationTokenSource? _cancellationTokenSource;
         private int _maxThreadCount;
         
+        // File conflict choice
+        private FileConflictChoice? _fileConflictChoice = null;
+        
+        // Admin mode state
+        private bool _isAdminMode = false;
+        private bool _wasRunningAsAdminOnStart = false;
+        
+        // Progress tracking
+        private DateTime _operationStartTime;
+        private int _totalFiles = 0;
+        private int _processedFiles = 0;
+        
         // Settings
         private ComboBox? _themeComboBox;
         private CheckBox? _micaBackdropCheckBox;
@@ -70,6 +82,9 @@ namespace RoboCopy_X
                 }
             }
             
+            // Check if already running as admin
+            InitializeAdminMode();
+            
             // Ensure logs directory exists
             EnsureLogsDirectoryExists();
             
@@ -83,7 +98,6 @@ namespace RoboCopy_X
             InitializeWaitTimeOptions();
             
             // Initialize with default enabled state
-            UpdateLogFileControlState();
             UpdateThreadCountState();
         }
 
@@ -127,18 +141,18 @@ namespace RoboCopy_X
             var appearanceStack = new StackPanel { Spacing = 12 };
             appearanceStack.Children.Add(new TextBlock 
             { 
-                Text = "Apar�ncia", 
+                Text = "Aparência", 
                 FontSize = 18, 
                 FontWeight = FontWeights.SemiBold 
             });
 
             var themeStack = new StackPanel { Spacing = 8 };
-            themeStack.Children.Add(new TextBlock { Text = "Tema da aplica��o", FontWeight = FontWeights.SemiBold });
+            themeStack.Children.Add(new TextBlock { Text = "Tema da aplicação", FontWeight = FontWeights.SemiBold });
             
             _themeComboBox = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
             _themeComboBox.Items.Add(new ComboBoxItem { Content = "Escuro", Tag = "Dark" });
             _themeComboBox.Items.Add(new ComboBoxItem { Content = "Claro", Tag = "Light" });
-            _themeComboBox.Items.Add(new ComboBoxItem { Content = "Sistema (padr�o)", Tag = "Default", IsSelected = true });
+            _themeComboBox.Items.Add(new ComboBoxItem { Content = "Sistema (padrão)", Tag = "Default", IsSelected = true });
             _themeComboBox.SelectionChanged += ThemeComboBox_SelectionChanged;
             themeStack.Children.Add(_themeComboBox);
             themeStack.Children.Add(new TextBlock 
@@ -150,7 +164,7 @@ namespace RoboCopy_X
             appearanceStack.Children.Add(themeStack);
 
             var micaStack = new StackPanel { Spacing = 8 };
-            micaStack.Children.Add(new TextBlock { Text = "Transpar�ncia da janela", FontWeight = FontWeights.SemiBold });
+            micaStack.Children.Add(new TextBlock { Text = "Transparência da janela", FontWeight = FontWeights.SemiBold });
             _micaBackdropCheckBox = new CheckBox 
             { 
                 Content = "Ativar efeito Mica (Windows 11)", 
@@ -186,13 +200,13 @@ namespace RoboCopy_X
             var autoCloseStack = new StackPanel { Spacing = 8 };
             _autoCloseInfoBarCheckBox = new CheckBox 
             { 
-                Content = "Fechar notifica��es de sucesso automaticamente", 
+                Content = "Fechar notificações de sucesso automaticamente", 
                 IsChecked = true 
             };
             autoCloseStack.Children.Add(_autoCloseInfoBarCheckBox);
             autoCloseStack.Children.Add(new TextBlock 
             { 
-                Text = "Notifica��es de sucesso fecham ap�s 5 segundos", 
+                Text = "Notificações de sucesso fecham após 5 segundos", 
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
@@ -201,13 +215,13 @@ namespace RoboCopy_X
             var confirmStack = new StackPanel { Spacing = 8 };
             _confirmExecutionCheckBox = new CheckBox 
             { 
-                Content = "Confirmar antes de executar opera��es", 
+                Content = "Confirmar antes de executar operações", 
                 IsChecked = false 
             };
             confirmStack.Children.Add(_confirmExecutionCheckBox);
             confirmStack.Children.Add(new TextBlock 
             { 
-                Text = "Mostra di�logo de confirma��o antes de executar o Robocopy", 
+                Text = "Mostra diálogo de confirmação antes de executar o Robocopy", 
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
@@ -216,13 +230,13 @@ namespace RoboCopy_X
             var savePathsStack = new StackPanel { Spacing = 8 };
             _saveLastPathsCheckBox = new CheckBox 
             { 
-                Content = "Lembrar �ltimos caminhos usados", 
+                Content = "Lembrar últimos caminhos usados", 
                 IsChecked = true 
             };
             savePathsStack.Children.Add(_saveLastPathsCheckBox);
             savePathsStack.Children.Add(new TextBlock 
             { 
-                Text = "Salva os �ltimos caminhos de origem e destino", 
+                Text = "Salva os últimos caminhos de origem e destino", 
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
@@ -239,15 +253,15 @@ namespace RoboCopy_X
             var defaultsStack = new StackPanel { Spacing = 12 };
             defaultsStack.Children.Add(new TextBlock 
             { 
-                Text = "Valores Padr�o", 
+                Text = "Valores Padrão", 
                 FontSize = 18, 
                 FontWeight = FontWeights.SemiBold 
             });
 
             var threadsStack = new StackPanel { Spacing = 8 };
-            threadsStack.Children.Add(new TextBlock { Text = "Threads padr�o", FontWeight = FontWeights.SemiBold });
+            threadsStack.Children.Add(new TextBlock { Text = "Threads padrão", FontWeight = FontWeights.SemiBold });
             _defaultThreadsComboBox = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
-            _defaultThreadsComboBox.Items.Add(new ComboBoxItem { Content = "Usar recomenda��o do sistema", Tag = "Auto", IsSelected = true });
+            _defaultThreadsComboBox.Items.Add(new ComboBoxItem { Content = "Usar recomendação do sistema", Tag = "Auto", IsSelected = true });
             _defaultThreadsComboBox.Items.Add(new ComboBoxItem { Content = "1 thread", Tag = "1" });
             _defaultThreadsComboBox.Items.Add(new ComboBoxItem { Content = "4 threads", Tag = "4" });
             _defaultThreadsComboBox.Items.Add(new ComboBoxItem { Content = "8 threads", Tag = "8" });
@@ -257,14 +271,14 @@ namespace RoboCopy_X
 
             _defaultCopySubdirsCheckBox = new CheckBox 
             { 
-                Content = "Copiar subdiret�rios por padr�o (/E)", 
+                Content = "Copiar subdiretórios por padrão (/E)", 
                 IsChecked = false 
             };
             defaultsStack.Children.Add(new StackPanel { Spacing = 8, Children = { _defaultCopySubdirsCheckBox } });
 
             _defaultMultiThreadCheckBox = new CheckBox 
             { 
-                Content = "Ativar multi-thread por padr�o (/MT)", 
+                Content = "Ativar multi-thread por padrão (/MT)", 
                 IsChecked = true 
             };
             defaultsStack.Children.Add(new StackPanel { Spacing = 8, Children = { _defaultMultiThreadCheckBox } });
@@ -287,20 +301,20 @@ namespace RoboCopy_X
 
             var versionStack = new StackPanel { Spacing = 4 };
             versionStack.Children.Add(new TextBlock { Text = "RoboCopy-X", FontWeight = FontWeights.SemiBold });
-            versionStack.Children.Add(new TextBlock { Text = "Vers�o 1.0.0", FontSize = 12 });
+            versionStack.Children.Add(new TextBlock { Text = "Versão 1.0.0", FontSize = 12 });
             versionStack.Children.Add(new TextBlock 
             { 
-                Text = "Interface gr�fica moderna para Robocopy", 
+                Text = "Interface gráfica moderna para Robocopy", 
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
             aboutStack.Children.Add(versionStack);
 
             var sysInfoStack = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-            sysInfoStack.Children.Add(new TextBlock { Text = "Informa��es do Sistema", FontWeight = FontWeights.SemiBold });
+            sysInfoStack.Children.Add(new TextBlock { Text = "Informações do Sistema", FontWeight = FontWeights.SemiBold });
             
             var systemInfo = new StringBuilder();
-            systemInfo.AppendLine($"Processadores: {Environment.ProcessorCount} n�cleos l�gicos");
+            systemInfo.AppendLine($"Processadores: {Environment.ProcessorCount} núcleos lógicos");
             systemInfo.AppendLine($"Sistema: {Environment.OSVersion}");
             systemInfo.AppendLine($".NET: {Environment.Version}");
             systemInfo.AppendLine($"Arquitetura: {RuntimeInformation.ProcessArchitecture}");
@@ -317,7 +331,7 @@ namespace RoboCopy_X
 
             var githubLink = new HyperlinkButton 
             { 
-                Content = "Ver documenta��o no GitHub",
+                Content = "Ver documentação no GitHub",
                 NavigateUri = new Uri("https://github.com/FM0Ura/RoboCopy-X"),
                 Margin = new Thickness(0, 8, 0, 0)
             };
@@ -341,14 +355,14 @@ namespace RoboCopy_X
 
             var resetButton = new Button 
             { 
-                Content = "Restaurar configura��es padr�o",
+                Content = "Restaurar configurações padrão",
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
             resetButton.Click += ResetSettingsButton_Click;
             resetStack.Children.Add(resetButton);
             resetStack.Children.Add(new TextBlock 
             { 
-                Text = "Esta a��o n�o pode ser desfeita", 
+                Text = "Esta ação não pode ser desfeita", 
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
@@ -359,7 +373,7 @@ namespace RoboCopy_X
 
             return new ContentDialog
             {
-                Title = "Configura��es",
+                Title = "Configurações",
                 Content = scrollViewer,
                 CloseButtonText = "Fechar",
                 DefaultButton = ContentDialogButton.Close
@@ -399,8 +413,8 @@ namespace RoboCopy_X
         {
             var dialog = new ContentDialog
             {
-                Title = "Confirmar redefini��o",
-                Content = "Tem certeza que deseja restaurar todas as configura��es padr�o?\n\nEsta a��o n�o pode ser desfeita.",
+                Title = "Confirmar redefinição",
+                Content = "Tem certeza que deseja restaurar todas as configurações padrão?\n\nEsta ação não pode ser desfeita.",
                 PrimaryButtonText = "Sim, restaurar",
                 CloseButtonText = "Cancelar",
                 DefaultButton = ContentDialogButton.Close,
@@ -411,7 +425,7 @@ namespace RoboCopy_X
             if (result == ContentDialogResult.Primary)
             {
                 ResetToDefaultSettings();
-                ShowInfoBar("Configura��es restauradas para os valores padr�o.", InfoBarSeverity.Success);
+                ShowInfoBar("Configurações restauradas para os valores padrão.", InfoBarSeverity.Success);
             }
         }
 
@@ -508,7 +522,7 @@ namespace RoboCopy_X
                             }
                             catch
                             {
-                                ShowInfoBar("N�o foi poss�vel obter a pasta do arquivo.", InfoBarSeverity.Error);
+                                ShowInfoBar("Não foi possível obter a pasta do arquivo.", InfoBarSeverity.Error);
                             }
                         }
                     }
@@ -596,7 +610,7 @@ namespace RoboCopy_X
                             }
                             catch
                             {
-                                ShowInfoBar("N�o foi poss�vel obter a pasta do arquivo.", InfoBarSeverity.Error);
+                                ShowInfoBar("Não foi possível obter a pasta do arquivo.", InfoBarSeverity.Error);
                             }
                         }
                     }
@@ -677,7 +691,7 @@ namespace RoboCopy_X
         private void MirrorCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             // Show warning when mirror is enabled
-            ShowInfoBar("Aten��o: O modo espelho (/MIR) ir� deletar arquivos no destino que n�o existem na origem!", 
+            ShowInfoBar("Atenção: O modo espelho (/MIR) irá deletar arquivos no destino que não existem na origem!", 
                        InfoBarSeverity.Warning);
         }
 
@@ -706,21 +720,6 @@ namespace RoboCopy_X
             UpdateWaitTimeValue();
         }
 
-        private void SaveLogCheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            UpdateLogFileControlState();
-        }
-
-        private void SaveLogCheckBox_Unchecked(object sender, RoutedEventArgs e)
-        {
-            UpdateLogFileControlState();
-        }
-
-        private void UpdateLogFileControlState()
-        {
-            // No longer needed - logs are always saved automatically
-        }
-
         private void UpdateThreadCountState()
         {
             if (ThreadCountComboBox != null)
@@ -738,7 +737,10 @@ namespace RoboCopy_X
         {
             try
             {
-                // Validate inputs (agora ass�ncrono)
+                // Reset file conflict choice for new operation
+                _fileConflictChoice = null;
+                
+                // Validate inputs (agora assíncrono)
                 if (!await ValidateInputsAsync())
                 {
                     return;
@@ -752,13 +754,15 @@ namespace RoboCopy_X
                 if (_confirmExecutionCheckBox?.IsChecked == true)
                 {
                     var result = await ShowQuestionDialogAsync(
-                        "Confirmar Execu��o",
+                        "Confirmar Execução",
                         $"Deseja executar o seguinte comando?\n\n{command}",
                         "Executar",
                         "Cancelar");
 
                     if (result != ContentDialogResult.Primary)
                     {
+                        // Reset file conflict choice if user cancels
+                        _fileConflictChoice = null;
                         return;
                     }
                 }
@@ -766,8 +770,35 @@ namespace RoboCopy_X
                 // Update UI
                 ExecuteButton.IsEnabled = false;
                 CancelButton.IsEnabled = true;
-                ProgressBar.IsIndeterminate = true;
-                ProgressBar.Visibility = Visibility.Visible;
+                
+                // Initialize progress tracking
+                _operationStartTime = DateTime.Now;
+                _totalFiles = 0;
+                _processedFiles = 0;
+                
+                // Show progress section
+                if (ProgressSection != null)
+                {
+                    ProgressSection.Visibility = Visibility.Visible;
+                }
+                
+                // Initialize progress
+                if (ProgressBar != null)
+                {
+                    ProgressBar.IsIndeterminate = false;
+                    ProgressBar.Value = 0;
+                }
+                
+                if (ProgressPercentageText != null)
+                {
+                    ProgressPercentageText.Text = "0%";
+                }
+                
+                if (ProgressStatusText != null)
+                {
+                    ProgressStatusText.Text = "Preparando transferência...";
+                }
+                
                 OutputTextBlock.Text = "Iniciando Robocopy...\n\n";
 
                 // Execute
@@ -776,8 +807,8 @@ namespace RoboCopy_X
             }
             catch (OperationCanceledException)
             {
-                AppendOutput("\n\n=== OPERA��O CANCELADA ===\n");
-                ShowInfoBar("Opera��o cancelada pelo usu�rio.", InfoBarSeverity.Warning);
+                AppendOutput("\n\n=== OPERAÇÃO CANCELADA ===\n");
+                ShowInfoBar("Operação cancelada pelo usuário.", InfoBarSeverity.Warning);
             }
             catch (Exception ex)
             {
@@ -789,11 +820,26 @@ namespace RoboCopy_X
                 // Reset UI
                 ExecuteButton.IsEnabled = true;
                 CancelButton.IsEnabled = false;
-                ProgressBar.IsIndeterminate = false;
-                ProgressBar.Visibility = Visibility.Collapsed;
+                
+                // Hide progress section
+                if (ProgressSection != null)
+                {
+                    ProgressSection.Visibility = Visibility.Collapsed;
+                }
+                
+                // Reset progress
+                if (ProgressBar != null)
+                {
+                    ProgressBar.IsIndeterminate = false;
+                    ProgressBar.Value = 0;
+                }
+                
                 _currentProcess = null;
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
+                
+                // Reset file conflict choice after operation completes
+                _fileConflictChoice = null;
             }
         }
 
@@ -806,7 +852,7 @@ namespace RoboCopy_X
                 if (_currentProcess != null && !_currentProcess.HasExited)
                 {
                     _currentProcess.Kill(true);
-                    AppendOutput("\n\nCancelando opera��o...\n");
+                    AppendOutput("\n\nCancelando operação...\n");
                 }
             }
             catch (Exception ex)
@@ -825,7 +871,7 @@ namespace RoboCopy_X
             var source = SourcePathTextBox.Text;
             var destination = DestinationPathTextBox.Text;
             
-            // 1. Valida��es b�sicas de exist�ncia
+            // 1. Validações básicas de existência
             if (string.IsNullOrWhiteSpace(source))
             {
                 ShowInfoBar("Por favor, especifique o caminho de origem.", InfoBarSeverity.Error);
@@ -841,48 +887,48 @@ namespace RoboCopy_X
             // 2. Verificar se origem existe
             if (!Directory.Exists(source))
             {
-                ShowInfoBar("O caminho de origem n�o existe!", InfoBarSeverity.Error);
+                ShowInfoBar("O caminho de origem não existe!", InfoBarSeverity.Error);
                 return false;
             }
             
-            // 3. CR�TICA #1: Origem e destino diferentes
+            // 3. CRÍTICA #1: Origem e destino diferentes
             var (isDifferent, diffError) = RoboCopy_X.Helpers.PathValidator.ValidateDifferentPaths(source, destination);
             if (!isDifferent)
             {
-                await ShowErrorDialogAsync("Caminhos Iguais", diffError ?? "Origem e destino n�o podem ser iguais.");
+                await ShowErrorDialogAsync("Caminhos Iguais", diffError ?? "Origem e destino não podem ser iguais.");
                 return false;
             }
             
-            // 4. CR�TICA #2: Destino n�o est� dentro da origem
+            // 4. CRÍTICA #2: Destino não está dentro da origem
             var (isNotNested, nestError) = RoboCopy_X.Helpers.PathValidator.ValidateNestedPaths(source, destination);
             if (!isNotNested)
             {
-                await ShowErrorDialogAsync("Hierarquia Inv�lida", nestError ?? "Destino n�o pode estar dentro da origem.");
+                await ShowErrorDialogAsync("Hierarquia Inválida", nestError ?? "Destino não pode estar dentro da origem.");
                 return false;
             }
             
-            // 5. CR�TICA #3: Verificar permiss�o de leitura na origem
+            // 5. CRÍTICA #3: Verificar permissão de leitura na origem
             var (canRead, readError) = RoboCopy_X.Helpers.PathValidator.CheckReadPermission(source);
             if (!canRead)
             {
-                await ShowErrorDialogAsync("Sem Permiss�o de Leitura", readError ?? "N�o foi poss�vel acessar a pasta de origem.");
+                await ShowErrorDialogAsync("Sem Permissão de Leitura", readError ?? "Não foi possível acessar a pasta de origem.");
                 return false;
             }
             
-            // 6. CR�TICA #4: Verificar permiss�o de escrita no destino
+            // 6. CRÍTICA #4: Verificar permissão de escritura no destino
             var (canWrite, writeError) = RoboCopy_X.Helpers.PathValidator.CheckWritePermission(destination);
             if (!canWrite)
             {
-                await ShowErrorDialogAsync("Sem Permiss�o de Escrita", writeError ?? "N�o foi poss�vel acessar a pasta de destino.");
+                await ShowErrorDialogAsync("Sem Permissão de Escrita", writeError ?? "Não foi possível acessar a pasta de destino.");
                 return false;
             }
             
-            // 7. CR�TICA #5: Verificar se n�o s�o caminhos de sistema (ORIGEM)
+            // 7. CRÍTICA #5: Verificar se não são caminhos de sistema (ORIGEM)
             var (isSafeSource, sourceWarning) = RoboCopy_X.Helpers.PathValidator.CheckSystemPath(source);
             if (!isSafeSource && sourceWarning != null)
             {
                 var result = await ShowWarningDialogAsync(
-                    "Aviso de Seguran�a - Origem",
+                    "Aviso de Segurança - Origem",
                     sourceWarning,
                     "Continuar Mesmo Assim",
                     "Cancelar");
@@ -891,12 +937,12 @@ namespace RoboCopy_X
                     return false;
             }
             
-            // 8. CR�TICA #5: Verificar se n�o s�o caminhos de sistema (DESTINO)
+            // 8. CRÍTICA #5: Verificar se não são caminhos de sistema (DESTINO)
             var (isSafeDest, destWarning) = RoboCopy_X.Helpers.PathValidator.CheckSystemPath(destination);
             if (!isSafeDest && destWarning != null)
             {
                 var result = await ShowWarningDialogAsync(
-                    "Aviso de Seguran�a - Destino",
+                    "Aviso de Segurança - Destino",
                     destWarning,
                     "Continuar Mesmo Assim",
                     "Cancelar");
@@ -905,13 +951,35 @@ namespace RoboCopy_X
                     return false;
             }
             
-            // 9. Avisar se destino n�o existe
-            if (!Directory.Exists(destination))
+            // 9. CRÍTICA #6: Verificar se arquivos já existem no destino
+            var sourceFolderName = System.IO.Path.GetFileName(source.TrimEnd('\\', '/'));
+            var finalDestination = System.IO.Path.Combine(destination, sourceFolderName);
+            
+            if (Directory.Exists(finalDestination))
             {
-                ShowInfoBar("Aviso: O caminho de destino n�o existe e ser� criado.", InfoBarSeverity.Warning);
+                var (hasConflicts, conflictInfo) = RoboCopy_X.Helpers.PathValidator.CheckExistingFiles(source, finalDestination);
+                
+                if (hasConflicts)
+                {
+                    var choice = await ShowFileConflictDialogAsync(conflictInfo);
+                    
+                    if (choice == FileConflictChoice.Cancel)
+                    {
+                        return false;
+                    }
+                    
+                    // Aplicar escolha do usuário
+                    ApplyFileConflictChoice(choice);
+                }
             }
             
-            // 10. Verificar espa�o em disco
+            // 10. Avisar se destino não existe
+            if (!Directory.Exists(destination))
+            {
+                ShowInfoBar("Aviso: O caminho de destino não existe e será criado.", InfoBarSeverity.Warning);
+            }
+            
+            // 11. Verificar espaço em disco
             try
             {
                 var includeSubdirs = CopySubdirectoriesCheckBox.IsChecked == true;
@@ -920,20 +988,211 @@ namespace RoboCopy_X
                 
                 if (!isValid)
                 {
-                    await ShowErrorDialogAsync("Espa�o Insuficiente", errorMessage ?? "N�o h� espa�o suficiente no disco de destino.");
+                    await ShowErrorDialogAsync("Espaço Insuficiente", errorMessage ?? "Não há espaço suficiente no disco de destino.");
                     return false;
                 }
-                else if (!string.IsNullOrEmpty(errorMessage))
+                else if (requiredSpace > 0 && availableSpace > 0)
                 {
-                    ShowInfoBar(errorMessage, InfoBarSeverity.Informational);
+                    // Show disk space information in the styled card
+                    ShowDiskSpaceInfo(requiredSpace, availableSpace);
                 }
             }
             catch (Exception ex)
             {
-                ShowInfoBar($"Aviso: N�o foi poss�vel verificar espa�o em disco. {ex.Message}", InfoBarSeverity.Warning);
+                ShowInfoBar($"Aviso: Não foi possível verificar espaço em disco. {ex.Message}", InfoBarSeverity.Warning);
             }
             
             return true;
+        }
+
+        private void ShowDiskSpaceInfo(long requiredBytes, long availableBytes)
+        {
+            if (DiskSpaceInfoCard == null) return;
+
+            // Convert bytes to GB
+            double requiredGB = requiredBytes / (1024.0 * 1024.0 * 1024.0);
+            double availableGB = availableBytes / (1024.0 * 1024.0 * 1024.0);
+            
+            // Calculate safety margin (10% of required or 500MB, whichever is larger)
+            long safetyMarginBytes = Math.Max((long)(requiredBytes * 0.1), 500L * 1024 * 1024);
+            double safetyMarginMB = safetyMarginBytes / (1024.0 * 1024.0);
+            
+            // Calculate space after copy
+            long afterCopyBytes = availableBytes - requiredBytes;
+            double afterCopyGB = afterCopyBytes / (1024.0 * 1024.0 * 1024.0);
+            
+            // Update UI
+            if (DiskSpaceRequired != null)
+                DiskSpaceRequired.Text = $"{requiredGB:F2} GB";
+            
+            if (DiskSpaceAvailable != null)
+                DiskSpaceAvailable.Text = $"{availableGB:F2} GB";
+            
+            if (DiskSpaceMargin != null)
+                DiskSpaceMargin.Text = $"{safetyMarginMB:F0} MB";
+            
+            if (DiskSpaceAfter != null)
+                DiskSpaceAfter.Text = $"~{Math.Max(0, afterCopyGB):F2} GB livres";
+            
+            // Update title and icon color based on available space
+            if (DiskSpaceTitle != null)
+            {
+                if (afterCopyBytes < safetyMarginBytes)
+                {
+                    DiskSpaceTitle.Text = "⚠️ Espaço justo - considere liberar mais espaço";
+                }
+                else
+                {
+                    DiskSpaceTitle.Text = "✅ Espaço suficiente disponível";
+                }
+            }
+            
+            // Show the card
+            DiskSpaceInfoCard.Visibility = Visibility.Visible;
+        }
+
+        private void DiskSpaceCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DiskSpaceInfoCard != null)
+            {
+                DiskSpaceInfoCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>
+        /// Escolha do usuário sobre como lidar com conflitos de arquivos.
+        /// </summary>
+        private enum FileConflictChoice
+        {
+            /// <summary>
+            /// Sobrescrever todos os arquivos existentes no destino.
+            /// Usa o comportamento padrão do Robocopy.
+            /// </summary>
+            Overwrite,
+            
+            /// <summary>
+            /// Ignorar/pular TODOS os arquivos que já existem no destino.
+            /// Usa as flags /XC /XN /XO do Robocopy para pular arquivos:
+            /// - /XC: Exclui arquivos alterados
+            /// - /XN: Exclui arquivos mais novos
+            /// - /XO: Exclui arquivos mais antigos
+            /// </summary>
+            Skip,
+            
+            /// <summary>
+            /// Cancelar a operação.
+            /// </summary>
+            Cancel
+        }
+
+        private async Task<FileConflictChoice> ShowFileConflictDialogAsync(string conflictInfo)
+        {
+            var contentPanel = new StackPanel
+            {
+                Spacing = 16,
+                Margin = new Thickness(0, 8, 0, 8)
+            };
+
+            var warningStack = new StackPanel
+            {
+                Spacing = 12,
+                Orientation = Orientation.Horizontal
+            };
+
+            var warningIcon = new FontIcon
+            {
+                Glyph = "\uE7BA",
+                FontSize = 32,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange),
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+
+            var messageStack = new StackPanel { Spacing = 8 };
+            var mainMessage = new TextBlock
+            {
+                Text = "Arquivos já existem no destino!",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            var detailMessage = new TextBlock
+            {
+                Text = "A pasta de destino já contém arquivos da origem.\nComo deseja proceder?",
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+
+            messageStack.Children.Add(mainMessage);
+            messageStack.Children.Add(detailMessage);
+            warningStack.Children.Add(warningIcon);
+            warningStack.Children.Add(messageStack);
+            contentPanel.Children.Add(warningStack);
+
+            var infoBorder = new Border
+            {
+                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16, 12, 16, 12),
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+
+            var infoText = new TextBlock
+            {
+                Text = conflictInfo,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+            };
+
+            infoBorder.Child = infoText;
+            contentPanel.Children.Add(infoBorder);
+
+            var dialog = new ContentDialog
+            {
+                Title = "Conflito de Arquivos",
+                Content = contentPanel,
+                PrimaryButtonText = "Sobrescrever",
+                SecondaryButtonText = "Ignorar",
+                CloseButtonText = "Cancelar",
+                DefaultButton = ContentDialogButton.Secondary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+
+            return result switch
+            {
+                ContentDialogResult.Primary => FileConflictChoice.Overwrite,
+                ContentDialogResult.Secondary => FileConflictChoice.Skip,
+                _ => FileConflictChoice.Cancel
+            };
+        }
+
+        private void ApplyFileConflictChoice(FileConflictChoice choice)
+        {
+            _fileConflictChoice = choice;
+            
+            switch (choice)
+            {
+                case FileConflictChoice.Overwrite:
+                    if (ExcludeOlderCheckBox != null)
+                    {
+                        ExcludeOlderCheckBox.IsChecked = false;
+                    }
+                    ShowInfoBar("Modo: Sobrescrever - Arquivos existentes serão substituídos.", InfoBarSeverity.Informational);
+                    break;
+
+                case FileConflictChoice.Skip:
+                    ShowInfoBar("Modo: Ignorar - Arquivos existentes serão mantidos, apenas novos serão copiados.", InfoBarSeverity.Informational);
+                    break;
+            }
         }
 
         private async Task<ContentDialogResult> ShowErrorDialogAsync(string title, string message)
@@ -959,7 +1218,7 @@ namespace RoboCopy_X
         }
 
         private async Task<ContentDialogResult> ShowQuestionDialogAsync(string title, string message,
-            string primaryButtonText = "Sim", string closeButtonText = "N�o")
+            string primaryButtonText = "Sim", string closeButtonText = "Não")
         {
             return await Helpers.StyledDialogHelper.ShowQuestionAsync(
                 title, message, this.Content.XamlRoot, primaryButtonText, closeButtonText);
@@ -969,32 +1228,33 @@ namespace RoboCopy_X
         {
             var sb = new StringBuilder();
             
-            // Get the source folder name to preserve folder structure
             var sourceFolderName = System.IO.Path.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
             var destinationWithFolder = System.IO.Path.Combine(DestinationPathTextBox.Text, sourceFolderName);
             
-            // Add source and destination (destination includes source folder name)
             sb.Append($"\"{SourcePathTextBox.Text}\" \"{destinationWithFolder}\"");
 
-            // Copy subdirectories
             if (CopySubdirectoriesCheckBox.IsChecked == true)
             {
                 sb.Append(" /E");
             }
 
-            // Mirror
             if (MirrorCheckBox.IsChecked == true)
             {
                 sb.Append(" /MIR");
             }
 
-            // Exclude older
-            if (ExcludeOlderCheckBox.IsChecked == true)
+            if (_fileConflictChoice == FileConflictChoice.Skip)
             {
-                sb.Append(" /XO");
+                sb.Append(" /XC /XN /XO");
+            }
+            else
+            {
+                if (ExcludeOlderCheckBox.IsChecked == true)
+                {
+                    sb.Append(" /XO");
+                }
             }
 
-            // Copy attributes
             var copyFlags = new StringBuilder();
             if (CopyDataCheckBox.IsChecked == true) copyFlags.Append("D");
             if (CopyAttributesCheckBox.IsChecked == true) copyFlags.Append("A");
@@ -1008,43 +1268,38 @@ namespace RoboCopy_X
                 sb.Append($" /COPY:{copyFlags}");
             }
 
-            // Multi-thread
             if (MultiThreadCheckBox.IsChecked == true)
             {
                 var threadCount = (int)ThreadCountNumberBox.Value;
                 sb.Append($" /MT:{threadCount}");
             }
 
-            // Retry count
             sb.Append($" /R:{(int)RetryCountNumberBox.Value}");
-
-            // Wait time
             sb.Append($" /W:{(int)WaitTimeNumberBox.Value}");
+            sb.Append(" /V");
 
-            // Verbose
-            if (VerboseCheckBox.IsChecked == true)
-            {
-                sb.Append(" /V");
-            }
-
-            // No progress
-            if (NoProgressCheckBox.IsChecked == true)
-            {
-                sb.Append(" /NP");
-            }
-
-            // Always add log file
             var logPath = GetLogFilePath();
             sb.Append($" /LOG:\"{logPath}\"");
             
-            // Store log path for later reference
-            CommandPreviewTextBox.Text = $"Log ser� salvo em: {logPath}";
+            CommandPreviewTextBox.Text = $"Log será salvo em: {logPath}";
 
             return sb.ToString();
         }
 
         private async Task ExecuteRobocopyAsync(string arguments, CancellationToken cancellationToken)
         {
+            string? destinationPath = null;
+            
+            try
+            {
+                var sourceFolderName = System.IO.Path.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
+                destinationPath = System.IO.Path.Combine(DestinationPathTextBox.Text, sourceFolderName);
+            }
+            catch
+            {
+                destinationPath = DestinationPathTextBox.Text;
+            }
+            
             await Task.Run(() =>
             {
                 var processStartInfo = new ProcessStartInfo
@@ -1065,7 +1320,6 @@ namespace RoboCopy_X
                     EnableRaisingEvents = true
                 };
 
-                // Handle output
                 _currentProcess.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
@@ -1073,6 +1327,81 @@ namespace RoboCopy_X
                         DispatcherQueue.TryEnqueue(() =>
                         {
                             AppendOutput(e.Data + "\n");
+                            
+                            var percentMatch = System.Text.RegularExpressions.Regex.Match(e.Data, @"(\d+(?:\.\d+)?)\s*%
+                            ");
+                            if (percentMatch.Success && double.TryParse(percentMatch.Groups[1].Value, out double percent))
+                            {
+                                UpdateProgress(percent);
+                            }
+                            
+                            var filePattern1 = System.Text.RegularExpressions.Regex.Match(
+                                e.Data, 
+                                @"^\s*(?:New File|Newer|Older|same|modified|\*EXTRA File)\s+[\d\.,]+\s*[KMG]?B?\s+(.+)$",
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                            );
+                            
+                            var filePattern2 = System.Text.RegularExpressions.Regex.Match(
+                                e.Data,
+                                @"\s+([^\s]+\.\w{2,4})\s*$"
+                            );
+                            
+                            var filePattern3 = System.Text.RegularExpressions.Regex.Match(
+                                e.Data,
+                                @"[A-Za-z]:\\(?:[^\\/:*?""<>|\r\n]+\\)*([^\\/:*?""<>|\r\n]+\.\w+)"
+                            );
+                            
+                            string? fileName = null;
+                            
+                            if (filePattern1.Success)
+                            {
+                                fileName = filePattern1.Groups[1].Value.Trim();
+                            }
+                            else if (filePattern3.Success)
+                            {
+                                fileName = filePattern3.Groups[1].Value.Trim();
+                            }
+                            else if (filePattern2.Success && 
+                                    (e.Data.Contains("New File") || 
+                                     e.Data.Contains("Newer") || 
+                                     e.Data.Contains("Older") ||
+                                     e.Data.Contains("modified") ||
+                                     e.Data.Contains("same")))
+                            {
+                                fileName = filePattern2.Groups[1].Value.Trim();
+                            }
+                            
+                            if (!string.IsNullOrEmpty(fileName))
+                            {
+                                _processedFiles++;
+                                
+                                if (fileName.Length > 50)
+                                {
+                                    fileName = "..." + fileName.Substring(fileName.Length - 47);
+                                }
+                                UpdateProgressStatus($"📄 Copiando: {fileName}");
+                                
+                                if (_totalFiles > 0 && ProgressDetailsText != null)
+                                {
+                                    DispatcherQueue.TryEnqueue(() =>
+                                    {
+                                        ProgressDetailsText.Text = $"Arquivo {_processedFiles} de {_totalFiles}";
+                                        ProgressDetailsText.Visibility = Visibility.Visible;
+                                    });
+                                }
+                            }
+                            
+                            var totalFilesMatch = System.Text.RegularExpressions.Regex.Match(
+                                e.Data,
+                                @"Files\s*:\s*(\d+)"
+                            );
+                            if (totalFilesMatch.Success && int.TryParse(totalFilesMatch.Groups[1].Value, out int total))
+                            {
+                                if (_totalFiles == 0 && total > 0)
+                                {
+                                    _totalFiles = total;
+                                }
+                            }
                         });
                     }
                 };
@@ -1093,13 +1422,12 @@ namespace RoboCopy_X
                     DispatcherQueue.TryEnqueue(() =>
                     {
                         AppendOutput($"Executando: robocopy.exe {arguments}\n");
-                        AppendOutput("???????????????????????????????????????????????????????\n\n");
+                        AppendOutput("═══════════════════════════════════════════\n\n");
                         
-                        // Extract log path from arguments
                         var logMatch = System.Text.RegularExpressions.Regex.Match(arguments, @"/LOG:""([^""]+)""");
                         if (logMatch.Success)
                         {
-                            AppendOutput($"?? Log ser� salvo em: {logMatch.Groups[1].Value}\n\n");
+                            AppendOutput($"📋 Log será salvo em: {logMatch.Groups[1].Value}\n\n");
                         }
                     });
 
@@ -1107,7 +1435,6 @@ namespace RoboCopy_X
                     _currentProcess.BeginOutputReadLine();
                     _currentProcess.BeginErrorReadLine();
 
-                    // Wait for process to exit or cancellation
                     while (!_currentProcess.WaitForExit(100))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1115,19 +1442,20 @@ namespace RoboCopy_X
 
                     var exitCode = _currentProcess.ExitCode;
 
-                    DispatcherQueue.TryEnqueue(() =>
+                    DispatcherQueue.TryEnqueue(async () =>
                     {
-                        AppendOutput($"\n???????????????????????????????????????????????????????\n");
-                        AppendOutput($"C�digo de sa�da: {exitCode}\n");
+                        AppendOutput($"\n═══════════════════════════════════════════\n");
+                        AppendOutput($"Código de saída: {exitCode}\n");
                         AppendOutput(GetRobocopyExitCodeDescription(exitCode) + "\n");
 
                         if (exitCode < 8)
                         {
-                            ShowInfoBar("Opera��o conclu�da com sucesso!", InfoBarSeverity.Success);
+                            ShowInfoBar("Operação concluída com sucesso!", InfoBarSeverity.Success);
+                            await ShowCompletionDialogAsync(destinationPath);
                         }
                         else
                         {
-                            ShowInfoBar("Opera��o conclu�da com erros. Verifique a sa�da.", InfoBarSeverity.Warning);
+                            ShowInfoBar("Operação concluída com erros. Verifique a saída.", InfoBarSeverity.Warning);
                         }
                     });
                 }
@@ -1140,28 +1468,136 @@ namespace RoboCopy_X
                     DispatcherQueue.TryEnqueue(async () =>
                     {
                         AppendOutput($"\n\nERRO: {ex.Message}\n");
-                        await ShowErrorDialogAsync("Erro durante execu��o", ex.Message);
+                        await ShowErrorDialogAsync("Erro durante execução", ex.Message);
                     });
                     throw;
                 }
             }, cancellationToken);
         }
 
+        private async Task ShowCompletionDialogAsync(string? destinationPath)
+        {
+            var contentPanel = new StackPanel
+            {
+                Spacing = 20,
+                Margin = new Thickness(0, 8, 0, 8)
+            };
+
+            var messageStack = new StackPanel
+            {
+                Spacing = 12,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            var successIcon = new FontIcon
+            {
+                Glyph = "\uE73E",
+                FontSize = 48,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.LimeGreen)
+            };
+
+            var successMessage = new TextBlock
+            {
+                Text = "Operação concluída com sucesso!",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            messageStack.Children.Add(successIcon);
+            messageStack.Children.Add(successMessage);
+            contentPanel.Children.Add(messageStack);
+
+            if (!string.IsNullOrEmpty(destinationPath))
+            {
+                var pathBorder = new Border
+                {
+                    Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+                    BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(16, 12, 16, 12),
+                    Margin = new Thickness(0, 8, 0, 0)
+                };
+
+                var pathStack = new StackPanel { Spacing = 6 };
+                var destinationLabel = new TextBlock
+                {
+                    Text = "Pasta de Destino:",
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                };
+
+                var destinationPathText = new TextBlock
+                {
+                    Text = destinationPath,
+                    FontSize = 13,
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+                };
+
+                pathStack.Children.Add(destinationLabel);
+                pathStack.Children.Add(destinationPathText);
+                pathBorder.Child = pathStack;
+                contentPanel.Children.Add(pathBorder);
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = "Operação Concluída",
+                Content = contentPanel,
+                PrimaryButtonText = "Abrir Pasta de Destino",
+                CloseButtonText = "Fechar",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+
+            if (result == ContentDialogResult.Primary && !string.IsNullOrEmpty(destinationPath))
+            {
+                try
+                {
+                    if (Directory.Exists(destinationPath))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = $"\"{destinationPath}\"",
+                            UseShellExecute = true
+                        });
+                    }
+                    else
+                    {
+                        ShowInfoBar("A pasta de destino não foi encontrada.", InfoBarSeverity.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorDialogAsync("Erro ao abrir pasta", $"Não foi possível abrir a pasta de destino: {ex.Message}");
+                }
+            }
+        }
+
         private string GetRobocopyExitCodeDescription(int exitCode)
         {
             return exitCode switch
             {
-                0 => "Nenhum arquivo foi copiado. Nenhuma falha encontrada. Nenhum arquivo foi incompat�vel.",
+                0 => "Nenhum arquivo foi copiado. Nenhuma falha encontrada. Nenhum arquivo foi incompatível.",
                 1 => "Todos os arquivos foram copiados com sucesso.",
-                2 => "Existem alguns arquivos adicionais no diret�rio de destino que n�o est�o presentes no diret�rio de origem.",
+                2 => "Existem alguns arquivos adicionais no diretório de destino que não estão presentes no diretório de origem.",
                 3 => "Alguns arquivos foram copiados. Arquivos adicionais estavam presentes.",
-                4 => "Alguns arquivos incompat�veis foram detectados. Nenhum arquivo foi copiado.",
-                5 => "Alguns arquivos foram copiados. Alguns arquivos eram incompat�veis.",
-                6 => "Existem arquivos adicionais e arquivos incompat�veis. Nenhum arquivo foi copiado.",
-                7 => "Arquivos foram copiados, havia arquivos adicionais e havia arquivos incompat�veis.",
-                8 => "V�rias falhas ocorreram durante a c�pia.",
-                >= 16 => "Erro fatal: Robocopy n�o executou a c�pia.",
-                _ => $"C�digo de sa�da desconhecido: {exitCode}"
+                4 => "Alguns arquivos incompatíveis foram detectados. Nenhum arquivo foi copiado.",
+                5 => "Alguns arquivos foram copiados. Alguns arquivos eram incompatíveis.",
+                6 => "Existem arquivos adicionais e arquivos incompatíveis. Nenhum arquivo foi copiado.",
+                7 => "Arquivos foram copiados, havia arquivos adicionais e havia arquivos incompatíveis.",
+                8 => "Várias falhas ocorreram durante a cópia.",
+                >= 16 => "Erro fatal: Robocopy não executou a cópia.",
+                _ => $"Código de saída desconhecido: {exitCode}"
             };
         }
 
@@ -1177,7 +1613,6 @@ namespace RoboCopy_X
             InfoBarMessage.Severity = severity;
             InfoBarMessage.IsOpen = true;
 
-            // Auto-close after 5 seconds for success messages if enabled
             if (severity == InfoBarSeverity.Success && _autoCloseInfoBarCheckBox?.IsChecked == true)
             {
                 var timer = DispatcherQueue.CreateTimer();
@@ -1191,18 +1626,66 @@ namespace RoboCopy_X
             }
         }
 
+        private void UpdateProgress(double percentage)
+        {
+            if (ProgressBar != null)
+            {
+                ProgressBar.Value = Math.Min(100, Math.Max(0, percentage));
+            }
+            
+            if (ProgressPercentageText != null)
+            {
+                ProgressPercentageText.Text = $"{percentage:F1}%";
+            }
+            
+            if (percentage > 0 && percentage < 100)
+            {
+                var elapsed = DateTime.Now - _operationStartTime;
+                var estimatedTotal = elapsed.TotalSeconds / (percentage / 100.0);
+                var remaining = TimeSpan.FromSeconds(estimatedTotal - elapsed.TotalSeconds);
+                
+                if (remaining.TotalSeconds > 0 && ProgressStatusText != null)
+                {
+                    string timeText;
+                    if (remaining.TotalHours >= 1)
+                    {
+                        timeText = $"{remaining.Hours}h {remaining.Minutes}m restantes";
+                    }
+                    else if (remaining.TotalMinutes >= 1)
+                    {
+                        timeText = $"{remaining.Minutes}m {remaining.Seconds}s restantes";
+                    }
+                    else
+                    {
+                        timeText = $"{remaining.Seconds}s restantes";
+                    }
+                    
+                    if (!ProgressStatusText.Text.StartsWith("📄") && 
+                        !ProgressStatusText.Text.Contains("Copiando:"))
+                    {
+                        ProgressStatusText.Text = $"⏱️ Transferindo... {timeText}";
+                    }
+                }
+            }
+            else if (percentage >= 100 && ProgressStatusText != null)
+            {
+                ProgressStatusText.Text = "✅ Operação concluída!";
+            }
+        }
+
+        private void UpdateProgressStatus(string status)
+        {
+            if (ProgressStatusText != null)
+            {
+                ProgressStatusText.Text = status;
+            }
+        }
+
         private void InitializeThreadOptions()
         {
-            // Get processor count (logical processors)
             _maxThreadCount = Environment.ProcessorCount;
-            
-            // Robocopy supports 1-128 threads
             int maxRobocopyThreads = Math.Min(_maxThreadCount * 2, 128);
-            
-            // Populate ComboBox with thread options
             var threadOptions = new List<ComboBoxItem>();
-            
-            // Add common presets
             var presets = new[] { 1, 2, 4, 8, 16, 32, 64, 128 };
             
             foreach (var count in presets)
@@ -1214,14 +1697,13 @@ namespace RoboCopy_X
                         Content = count == _maxThreadCount 
                             ? $"{count} threads (recomendado para este sistema)" 
                             : count == _maxThreadCount * 2
-                                ? $"{count} threads (2x n�cleos)"
+                                ? $"{count} threads (2x núcleos)"
                                 : $"{count} threads",
                         Tag = count
                     };
                     
                     threadOptions.Add(item);
                     
-                    // Select the processor count as default
                     if (count == _maxThreadCount)
                     {
                         ThreadCountComboBox.SelectedItem = item;
@@ -1229,7 +1711,6 @@ namespace RoboCopy_X
                 }
             }
             
-            // If system has unusual thread count, add it
             if (!presets.Contains(_maxThreadCount))
             {
                 var systemItem = new ComboBoxItem
@@ -1238,7 +1719,6 @@ namespace RoboCopy_X
                     Tag = _maxThreadCount
                 };
                 
-                // Insert in sorted position
                 int insertIndex = threadOptions.FindIndex(t => (int)t.Tag > _maxThreadCount);
                 if (insertIndex == -1)
                     threadOptions.Add(systemItem);
@@ -1248,16 +1728,13 @@ namespace RoboCopy_X
                 ThreadCountComboBox.SelectedItem = systemItem;
             }
             
-            // Set items
             ThreadCountComboBox.ItemsSource = threadOptions;
             
-            // If nothing selected, select first item
             if (ThreadCountComboBox.SelectedIndex == -1 && threadOptions.Count > 0)
             {
                 ThreadCountComboBox.SelectedIndex = 0;
             }
             
-            // Update the hidden NumberBox
             UpdateThreadCountValue();
         }
 
@@ -1265,14 +1742,12 @@ namespace RoboCopy_X
         {
             var retryOptions = new List<ComboBoxItem>();
             
-            // Add 1 as first option
             retryOptions.Add(new ComboBoxItem
             {
                 Content = "1 tentativa",
                 Tag = 1
             });
             
-            // Add intervals of 10 from 10 to 100
             for (int i = 10; i <= 100; i += 10)
             {
                 retryOptions.Add(new ComboBoxItem
@@ -1282,21 +1757,14 @@ namespace RoboCopy_X
                 });
             }
             
-            // Set items
             RetryCountComboBox.ItemsSource = retryOptions;
-            
-            // Select 10 as default (index 1)
             RetryCountComboBox.SelectedIndex = 1;
-            
-            // Update the hidden NumberBox
             UpdateRetryCountValue();
         }
 
         private void InitializeWaitTimeOptions()
         {
             var waitTimeOptions = new List<ComboBoxItem>();
-            
-            // Add common wait time options in seconds
             var waitTimes = new[] { 1, 5, 10, 15, 30, 60, 120, 180, 300, 600 };
             
             foreach (var seconds in waitTimes)
@@ -1319,13 +1787,8 @@ namespace RoboCopy_X
                 });
             }
             
-            // Set items
             WaitTimeComboBox.ItemsSource = waitTimeOptions;
-            
-            // Select 5 seconds as default (index 1)
             WaitTimeComboBox.SelectedIndex = 1;
-            
-            // Update the hidden NumberBox
             UpdateWaitTimeValue();
         }
 
@@ -1351,6 +1814,128 @@ namespace RoboCopy_X
             {
                 WaitTimeNumberBox.Value = seconds;
             }
+        }
+
+        private void InitializeAdminMode()
+        {
+            _wasRunningAsAdminOnStart = Helpers.AdminPrivilegeHelper.IsRunningAsAdmin();
+            _isAdminMode = _wasRunningAsAdminOnStart;
+            
+            UpdateAdminModeUI();
+            
+            if (_wasRunningAsAdminOnStart)
+            {
+                if (AdminModeToggle != null)
+                {
+                    AdminModeToggle.IsChecked = true;
+                    AdminModeToggle.IsEnabled = false;
+                }
+                
+                var (username, _) = Helpers.AdminPrivilegeHelper.GetCurrentUserInfo();
+                
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                {
+                    ShowInfoBar($"Aplicação iniciada com privilégios de Administrador (usuário: {username})", 
+                               InfoBarSeverity.Informational);
+                });
+            }
+        }
+
+        private void UpdateAdminModeUI()
+        {
+            if (AdminModeToggle == null) return;
+            
+            if (_isAdminMode)
+            {
+                if (AdminModeOnContent != null)
+                    AdminModeOnContent.Visibility = Visibility.Visible;
+                if (AdminModeOffContent != null)
+                    AdminModeOffContent.Visibility = Visibility.Collapsed;
+                
+                this.Title = "RoboCopy-X (Administrador)";
+            }
+            else
+            {
+                if (AdminModeOnContent != null)
+                    AdminModeOnContent.Visibility = Visibility.Collapsed;
+                if (AdminModeOffContent != null)
+                    AdminModeOffContent.Visibility = Visibility.Visible;
+                
+                this.Title = "RoboCopy-X";
+            }
+        }
+
+        private async void AdminModeToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ToggleButton toggle) return;
+            
+            if (_wasRunningAsAdminOnStart)
+            {
+                toggle.IsChecked = true;
+                await ShowInfoDialogAsync(
+                    "Modo Administrador Ativo",
+                    "A aplicação foi iniciada com privilégios de administrador.\n\n" +
+                    "Para remover os privilégios, feche e inicie a aplicação normalmente.");
+                return;
+            }
+            
+            if (toggle.IsChecked == true)
+            {
+                await ActivateAdminModeAsync();
+            }
+            else
+            {
+                await DeactivateAdminModeAsync();
+            }
+        }
+
+        private async Task ActivateAdminModeAsync()
+        {
+            var result = await ShowWarningDialogAsync(
+                "Ativar Modo Administrador",
+                "Para ativar o modo administrador, a aplicação precisa ser reiniciada.\n\n" +
+                "⚠️ Todas as operações em andamento serão canceladas.\n\n" +
+                "Deseja continuar?",
+                "Sim, Reiniciar",
+                "Cancelar");
+            
+            if (result != ContentDialogResult.Primary)
+            {
+                AdminModeToggle.IsChecked = false;
+                UpdateAdminModeUI();
+                return;
+            }
+            
+            var success = Helpers.AdminPrivilegeHelper.RestartAsAdmin();
+            
+            if (success)
+            {
+                Application.Current.Exit();
+            }
+            else
+            {
+                AdminModeToggle.IsChecked = false;
+                UpdateAdminModeUI();
+                
+                await ShowErrorDialogAsync(
+                    "Falha ao Ativar Modo Admin",
+                    "Não foi possível reiniciar a aplicação com privilégios de administrador.\n\n" +
+                    "Possíveis causas:\n" +
+                    "• Operação cancelada pelo controle de conta de usuário (UAC)\n" +
+                    "• Permissões insuficientes no sistema\n" +
+                    "• Falha ao localizar o executável da aplicação");
+            }
+        }
+
+        private async Task DeactivateAdminModeAsync()
+        {
+            AdminModeToggle.IsChecked = true;
+            
+            await ShowInfoDialogAsync(
+                "Não é Possível Desativar",
+                "Uma vez que a aplicação está rodando com privilégios de administrador, " +
+                "não é possível removê-los durante a execução.\n\n" +
+                "Para executar sem privilégios de admin, feche e inicie a aplicação normalmente.");
         }
     }
 }
