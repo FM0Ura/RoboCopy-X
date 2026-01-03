@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using RoboCopy_X.Services;
 
 namespace RoboCopy_X.Helpers
@@ -89,7 +92,7 @@ namespace RoboCopy_X.Helpers
                 if (normalizedSource == normalizedDest)
                 {
                     return (false, 
-                        "? Erro: Origem e destino são iguais!\n\n" +
+                        "ERRO: Origem e destino são iguais!\n\n" +
                         $"Caminho: {sourcePath}\n\n" +
                         "A origem e o destino devem ser diferentes.\n" +
                         "Escolha um destino diferente para continuar.");
@@ -118,14 +121,14 @@ namespace RoboCopy_X.Helpers
                 if (normalizedDest.StartsWith(normalizedSource))
                 {
                     return (false, 
-                        "?? PERIGO: Destino está dentro da origem!\n\n" +
+                        "PERIGO: Destino está dentro da origem!\n\n" +
                         $"Origem: {sourcePath}\n" +
                         $"Destino: {destinationPath}\n\n" +
                         "Isso causará:\n" +
                         "• Recursão infinita durante a cópia\n" +
                         "• Enchimento completo do disco\n" +
                         "• Possível travamento do sistema\n\n" +
-                        "? Operação bloqueada por segurança.\n" +
+                        "Operação bloqueada por segurança.\n" +
                         "Escolha um destino fora da pasta de origem.");
                 }
                 
@@ -155,7 +158,7 @@ namespace RoboCopy_X.Helpers
             catch (System.UnauthorizedAccessException)
             {
                 return (false, 
-                    "? Sem permissão de leitura!\n\n" +
+                    "Sem permissão de leitura!\n\n" +
                     $"Pasta: {path}\n\n" +
                     "Você não tem permissão para ler esta pasta.\n\n" +
                     "Soluções:\n" +
@@ -205,7 +208,7 @@ namespace RoboCopy_X.Helpers
             catch (System.UnauthorizedAccessException)
             {
                 return (false, 
-                    "? Sem permissão de escrita!\n\n" +
+                    "Sem permissão de escrita!\n\n" +
                     $"Pasta: {path}\n\n" +
                     "Você não tem permissão para escrever nesta pasta.\n\n" +
                     "Soluções:\n" +
@@ -219,7 +222,7 @@ namespace RoboCopy_X.Helpers
                 if (ex.Message.Contains("read-only", System.StringComparison.OrdinalIgnoreCase))
                 {
                     return (false, 
-                        "? Disco protegido contra gravação!\n\n" +
+                        "Disco protegido contra gravação!\n\n" +
                         "O disco de destino está em modo somente leitura.\n\n" +
                         "Verifique:\n" +
                         "• Se é um CD/DVD (não é possível gravar)\n" +
@@ -261,7 +264,7 @@ namespace RoboCopy_X.Helpers
                     if (normalizedPath.StartsWith(normalizedSystem))
                     {
                         return (false, 
-                            "?? ATENÇÃO: Pasta do sistema Windows!\n\n" +
+                            "ATENÇÃO: Pasta do sistema Windows!\n\n" +
                             $"Caminho: {path}\n" +
                             $"Sistema: {systemPath}\n\n" +
                             "Copiar de/para pastas do sistema pode causar:\n" +
@@ -269,7 +272,7 @@ namespace RoboCopy_X.Helpers
                             "• Necessidade de privilégios de administrador\n" +
                             "• Arquivos bloqueados em uso pelo sistema\n" +
                             "• Corrupção do sistema operacional\n\n" +
-                            "?? Esta operação não é recomendada!\n\n" +
+                            "Esta operação não é recomendada!\n\n" +
                             "Deseja realmente continuar?");
                     }
                 }
@@ -279,6 +282,88 @@ namespace RoboCopy_X.Helpers
             catch (System.Exception ex)
             {
                 return (true, $"Aviso: Não foi possível verificar caminho do sistema: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// CRÍTICA #6: Verifica se há arquivos conflitantes no destino
+        /// </summary>
+        public static (bool HasConflicts, string ConflictInfo) CheckExistingFiles(
+            string sourcePath,
+            string destinationPath)
+        {
+            try
+            {
+                if (!Directory.Exists(destinationPath))
+                {
+                    return (false, string.Empty);
+                }
+
+                // Obter todos os arquivos recursivamente
+                var sourceFiles = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
+                var destFiles = Directory.GetFiles(destinationPath, "*", SearchOption.AllDirectories);
+
+                // Criar mapa de caminhos relativos para comparação
+                var sourceRelativePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var destRelativePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // Normalizar caminhos da origem
+                foreach (var file in sourceFiles)
+                {
+                    var relativePath = Path.GetRelativePath(sourcePath, file);
+                    sourceRelativePaths.Add(relativePath);
+                }
+
+                // Normalizar caminhos do destino
+                foreach (var file in destFiles)
+                {
+                    var relativePath = Path.GetRelativePath(destinationPath, file);
+                    destRelativePaths.Add(relativePath);
+                }
+
+                // Encontrar arquivos conflitantes (mesmos caminhos relativos)
+                var conflictingFiles = sourceRelativePaths.Intersect(destRelativePaths).ToList();
+
+                if (conflictingFiles.Count == 0)
+                {
+                    return (false, string.Empty);
+                }
+
+                // Contar pastas também
+                int totalSourceFolders = Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories).Length;
+                int totalDestFolders = Directory.GetDirectories(destinationPath, "*", SearchOption.AllDirectories).Length;
+
+                var conflictInfo = new StringBuilder();
+                conflictInfo.AppendLine($"Arquivos conflitantes encontrados: {conflictingFiles.Count}");
+                conflictInfo.AppendLine($"Total de arquivos na origem: {sourceFiles.Length}");
+                conflictInfo.AppendLine($"Total de arquivos no destino: {destFiles.Length}");
+                conflictInfo.AppendLine($"Total de pastas na origem: {totalSourceFolders}");
+                conflictInfo.AppendLine($"Total de pastas no destino: {totalDestFolders}");
+                conflictInfo.AppendLine();
+                conflictInfo.AppendLine("Exemplos de arquivos conflitantes:");
+                
+                // Mostrar até 5 exemplos de diferentes tipos/pastas
+                var examples = conflictingFiles.Take(5).ToList();
+                foreach (var file in examples)
+                {
+                    // Mostrar caminho relativo para melhor contexto
+                    conflictInfo.AppendLine($"  • {file}");
+                }
+
+                if (conflictingFiles.Count > 5)
+                {
+                    conflictInfo.AppendLine($"  ... e mais {conflictingFiles.Count - 5} arquivos");
+                }
+
+                return (true, conflictInfo.ToString());
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return (false, "Erro: Sem permissão para acessar alguns arquivos ou pastas.");
+            }
+            catch (System.Exception ex)
+            {
+                return (false, $"Erro ao verificar arquivos: {ex.Message}");
             }
         }
     }

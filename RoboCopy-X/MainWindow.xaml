@@ -46,8 +46,70 @@
                 <!-- Action Buttons -->
                 <StackPanel Grid.Column="1" 
                            Orientation="Horizontal" 
-                           Spacing="8"
+                           Spacing="12"
                            VerticalAlignment="Center">
+                    
+                    <!-- Admin Mode Toggle Button with enhanced styling -->
+                    <ToggleButton x:Name="AdminModeToggle"
+                                  Click="AdminModeToggle_Click"
+                                  Padding="12,8"
+                                  CornerRadius="6"
+                                  BorderThickness="2">
+                        <ToggleButton.Resources>
+                            <!-- Custom colors for checked state (Admin Active) -->
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#FFF3CD"/>
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#FFE69C"/>
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#FFD966"/>
+                            <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="#FF9800"/>
+                            <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="#F57C00"/>
+                            <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="#E65100"/>
+                        </ToggleButton.Resources>
+                        <Grid>
+                            <!-- Content when Admin Mode is OFF -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" x:Name="AdminModeOffContent">
+                                <FontIcon Glyph="&#xE7EF;" 
+                                         FontSize="16" 
+                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="Modo Admin" 
+                                          FontSize="13"
+                                          VerticalAlignment="Center"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <!-- Content when Admin Mode is ON -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" x:Name="AdminModeOnContent" Visibility="Collapsed">
+                                <FontIcon Glyph="&#xE72E;" 
+                                         FontSize="16" 
+                                         Foreground="#E65100">
+                                    <FontIcon.RenderTransform>
+                                        <CompositeTransform/>
+                                    </FontIcon.RenderTransform>
+                                </FontIcon>
+                                <TextBlock Text="Admin Ativo" 
+                                          FontSize="13"
+                                          FontWeight="SemiBold" 
+                                          VerticalAlignment="Center"
+                                          Foreground="#E65100"/>
+                            </StackPanel>
+                        </Grid>
+                        <ToolTipService.ToolTip>
+                            <ToolTip>
+                                <StackPanel Spacing="4" MaxWidth="300">
+                                    <TextBlock Text="Modo Administrador" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Ativa privilégios elevados para operações que exigem permissões de administrador." 
+                                              TextWrapping="Wrap"
+                                              FontSize="12"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+                            </ToolTip>
+                        </ToolTipService.ToolTip>
+                    </ToggleButton>
+                    
+                    <!-- Separator -->
+                    <Rectangle Width="1" 
+                              Height="28"
+                              Fill="{ThemeResource DividerStrokeColorDefaultBrush}"
+                              Margin="4,0"/>
+                    
                     <Button x:Name="SettingsButton"
                             Click="SettingsButton_Click"
                             Style="{StaticResource SubtleButtonStyle}"
@@ -287,6 +349,10 @@
                                 </StackPanel>
                             </Border>
 
+                        </StackPanel>
+
+                        <!-- Right Column -->
+                        <StackPanel Grid.Column="2" Spacing="20">
                             <!-- Performance Card -->
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -315,10 +381,8 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
+                            
 
-                        <!-- Right Column -->
-                        <StackPanel Grid.Column="2" Spacing="20">
                             <!-- Retry Options Card -->
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -349,37 +413,6 @@
                                                   SelectionChanged="WaitTimeComboBox_SelectionChanged"
                                                   ToolTipService.ToolTip="Tempo de espera entre tentativas (/W)"/>
                                     </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Logging Card -->
-                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="16">
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="Log e Saída" 
-                                              FontWeight="SemiBold"
-                                              FontSize="14"/>
-                                    
-                                    <CheckBox x:Name="VerboseCheckBox" 
-                                              Content="Saída detalhada"
-                                              ToolTipService.ToolTip="Exibe informações detalhadas incluindo arquivos ignorados (/V)"/>
-
-                                    <CheckBox x:Name="NoProgressCheckBox" 
-                                              Content="Ocultar porcentagem"
-                                              ToolTipService.ToolTip="Não mostra porcentagem de progresso (/NP)"/>
-
-                                    <InfoBar Severity="Informational" IsOpen="True" IsClosable="False">
-                                        <InfoBar.Content>
-                                            <TextBlock TextWrapping="Wrap">
-                                                <Run Text="Logs são salvos automaticamente em:"/>
-                                                <LineBreak/>
-                                                <Run FontFamily="Consolas" FontSize="11" Text="RoboCopy-X/logs/"/>
-                                            </TextBlock>
-                                        </InfoBar.Content>
-                                    </InfoBar>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -425,11 +458,51 @@
                             </Button>
                         </StackPanel>
 
-                        <ProgressBar x:Name="ProgressBar" 
-                                    IsIndeterminate="False" 
-                                    Visibility="Collapsed"
-                                    Height="4"
-                                    CornerRadius="2"/>
+                        <!-- Progress Section with Percentage -->
+                        <StackPanel x:Name="ProgressSection" 
+                                   Spacing="8"
+                                   Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <ProgressBar x:Name="ProgressBar" 
+                                            Grid.Column="0"
+                                            IsIndeterminate="False" 
+                                            Value="0"
+                                            Maximum="100"
+                                            Height="10"
+                                            CornerRadius="5"
+                                            VerticalAlignment="Center"/>
+                                
+                                <TextBlock x:Name="ProgressPercentageText"
+                                          Grid.Column="1"
+                                          Text="0%"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          Margin="16,0,0,0"
+                                          VerticalAlignment="Center"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Grid>
+                            
+                            <TextBlock x:Name="ProgressStatusText"
+                                      Text="Preparando..."
+                                      FontSize="13"
+                                      FontWeight="SemiBold"
+                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                      TextAlignment="Center"
+                                      TextTrimming="CharacterEllipsis"
+                                      MaxLines="2"/>
+                            
+                            <TextBlock x:Name="ProgressDetailsText"
+                                      Text=""
+                                      FontSize="11"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      TextAlignment="Center"
+                                      Visibility="Collapsed"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
