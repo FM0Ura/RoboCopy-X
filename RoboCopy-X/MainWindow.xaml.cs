@@ -915,7 +915,7 @@ namespace RoboCopy_X
                 return false;
             }
             
-            // 6. CRÍTICA #4: Verificar permissão de escrita no destino
+            // 6. CRÍTICA #4: Verificar permissão de escritura no destino
             var (canWrite, writeError) = RoboCopy_X.Helpers.PathValidator.CheckWritePermission(destination);
             if (!canWrite)
             {
@@ -991,9 +991,10 @@ namespace RoboCopy_X
                     await ShowErrorDialogAsync("Espaço Insuficiente", errorMessage ?? "Não há espaço suficiente no disco de destino.");
                     return false;
                 }
-                else if (!string.IsNullOrEmpty(errorMessage))
+                else if (requiredSpace > 0 && availableSpace > 0)
                 {
-                    ShowInfoBar(errorMessage, InfoBarSeverity.Informational);
+                    // Show disk space information in the styled card
+                    ShowDiskSpaceInfo(requiredSpace, availableSpace);
                 }
             }
             catch (Exception ex)
@@ -1002,6 +1003,60 @@ namespace RoboCopy_X
             }
             
             return true;
+        }
+
+        private void ShowDiskSpaceInfo(long requiredBytes, long availableBytes)
+        {
+            if (DiskSpaceInfoCard == null) return;
+
+            // Convert bytes to GB
+            double requiredGB = requiredBytes / (1024.0 * 1024.0 * 1024.0);
+            double availableGB = availableBytes / (1024.0 * 1024.0 * 1024.0);
+            
+            // Calculate safety margin (10% of required or 500MB, whichever is larger)
+            long safetyMarginBytes = Math.Max((long)(requiredBytes * 0.1), 500L * 1024 * 1024);
+            double safetyMarginMB = safetyMarginBytes / (1024.0 * 1024.0);
+            
+            // Calculate space after copy
+            long afterCopyBytes = availableBytes - requiredBytes;
+            double afterCopyGB = afterCopyBytes / (1024.0 * 1024.0 * 1024.0);
+            
+            // Update UI
+            if (DiskSpaceRequired != null)
+                DiskSpaceRequired.Text = $"{requiredGB:F2} GB";
+            
+            if (DiskSpaceAvailable != null)
+                DiskSpaceAvailable.Text = $"{availableGB:F2} GB";
+            
+            if (DiskSpaceMargin != null)
+                DiskSpaceMargin.Text = $"{safetyMarginMB:F0} MB";
+            
+            if (DiskSpaceAfter != null)
+                DiskSpaceAfter.Text = $"~{Math.Max(0, afterCopyGB):F2} GB livres";
+            
+            // Update title and icon color based on available space
+            if (DiskSpaceTitle != null)
+            {
+                if (afterCopyBytes < safetyMarginBytes)
+                {
+                    DiskSpaceTitle.Text = "⚠️ Espaço justo - considere liberar mais espaço";
+                }
+                else
+                {
+                    DiskSpaceTitle.Text = "✅ Espaço suficiente disponível";
+                }
+            }
+            
+            // Show the card
+            DiskSpaceInfoCard.Visibility = Visibility.Visible;
+        }
+
+        private void DiskSpaceCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DiskSpaceInfoCard != null)
+            {
+                DiskSpaceInfoCard.Visibility = Visibility.Collapsed;
+            }
         }
 
         /// <summary>
@@ -1038,7 +1093,6 @@ namespace RoboCopy_X
                 Margin = new Thickness(0, 8, 0, 8)
             };
 
-            // Warning icon and message
             var warningStack = new StackPanel
             {
                 Spacing = 12,
@@ -1047,7 +1101,7 @@ namespace RoboCopy_X
 
             var warningIcon = new FontIcon
             {
-                Glyph = "\uE7BA", // Warning icon
+                Glyph = "\uE7BA",
                 FontSize = 32,
                 FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange),
@@ -1055,11 +1109,7 @@ namespace RoboCopy_X
                 Margin = new Thickness(0, 4, 0, 0)
             };
 
-            var messageStack = new StackPanel
-            {
-                Spacing = 8
-            };
-
+            var messageStack = new StackPanel { Spacing = 8 };
             var mainMessage = new TextBlock
             {
                 Text = "Arquivos já existem no destino!",
@@ -1078,12 +1128,10 @@ namespace RoboCopy_X
 
             messageStack.Children.Add(mainMessage);
             messageStack.Children.Add(detailMessage);
-
             warningStack.Children.Add(warningIcon);
             warningStack.Children.Add(messageStack);
             contentPanel.Children.Add(warningStack);
 
-            // Conflict info section
             var infoBorder = new Border
             {
                 Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
@@ -1106,39 +1154,6 @@ namespace RoboCopy_X
             infoBorder.Child = infoText;
             contentPanel.Children.Add(infoBorder);
 
-            // Options explanation
-            var optionsStack = new StackPanel
-            {
-                Spacing = 8,
-                Margin = new Thickness(0, 16, 0, 0)
-            };
-
-            var optionsTitle = new TextBlock
-            {
-                Text = "Opções disponíveis:",
-                FontSize = 14,
-                FontWeight = FontWeights.SemiBold
-            };
-
-            var option1 = new TextBlock
-            {
-                Text = "• Sobrescrever: Substitui todos os arquivos existentes",
-                FontSize = 13,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
-            };
-
-            var option2 = new TextBlock
-            {
-                Text = "• Ignorar: Pula TODOS os arquivos que já existem no destino",
-                FontSize = 13,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
-            };
-
-            optionsStack.Children.Add(optionsTitle);
-            optionsStack.Children.Add(option1);
-            optionsStack.Children.Add(option2);
-            contentPanel.Children.Add(optionsStack);
-
             var dialog = new ContentDialog
             {
                 Title = "Conflito de Arquivos",
@@ -1148,50 +1163,6 @@ namespace RoboCopy_X
                 CloseButtonText = "Cancelar",
                 DefaultButton = ContentDialogButton.Secondary,
                 XamlRoot = this.Content.XamlRoot
-            };
-
-            // Criar estilo customizado para o botão primário com fundo vermelho
-            var primaryButtonStyle = new Style(typeof(Button));
-            primaryButtonStyle.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(Microsoft.UI.Colors.Red)));
-            primaryButtonStyle.Setters.Add(new Setter(Button.ForegroundProperty, new SolidColorBrush(Microsoft.UI.Colors.White)));
-
-            // Aplicar estilo ao ContentDialog através de recursos
-            dialog.Resources["ContentDialogPrimaryButtonStyle"] = primaryButtonStyle;
-
-            // Também tentar aplicar via evento Loaded com múltiplas tentativas
-            dialog.Loaded += async (s, e) =>
-            {
-                // Aguardar um pouco para garantir que a árvore visual está carregada
-                await Task.Delay(50);
-                
-                try
-                {
-                    // Tentar encontrar e estilizar o botão primário
-                    var primaryButton = FindVisualChild<Button>(dialog, "PrimaryButton");
-                    if (primaryButton != null)
-                    {
-                        primaryButton.Background = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                        primaryButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-                        primaryButton.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkRed);
-                    }
-                    else
-                    {
-                        // Tentar busca alternativa sem filtro de nome
-                        var buttons = FindVisualChildren<Button>(dialog);
-                        if (buttons.Count >= 1)
-                        {
-                            // O primeiro botão geralmente é o Primary
-                            var btn = buttons[0];
-                            btn.Background = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                            btn.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-                            btn.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkRed);
-                        }
-                    }
-                }
-                catch
-                {
-                    // Silenciosamente falhar se não conseguir aplicar o estilo
-                }
             };
 
             var result = await dialog.ShowAsync();
@@ -1204,76 +1175,24 @@ namespace RoboCopy_X
             };
         }
 
-        // Helper method melhorado para encontrar elementos na árvore visual
-        private T? FindVisualChild<T>(DependencyObject parent, string? childName = null) where T : DependencyObject
+        private void ApplyFileConflictChoice(FileConflictChoice choice)
         {
-            if (parent == null) return null;
-
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            _fileConflictChoice = choice;
+            
+            switch (choice)
             {
-                var child = VisualTreeHelper.GetChild(parent, i);
+                case FileConflictChoice.Overwrite:
+                    if (ExcludeOlderCheckBox != null)
+                    {
+                        ExcludeOlderCheckBox.IsChecked = false;
+                    }
+                    ShowInfoBar("Modo: Sobrescrever - Arquivos existentes serão substituídos.", InfoBarSeverity.Informational);
+                    break;
 
-                if (child is T typedChild)
-                {
-                    if (string.IsNullOrEmpty(childName))
-                        return typedChild;
-
-                    if (child is FrameworkElement fe && fe.Name == childName)
-                        return typedChild;
-                }
-
-                var result = FindVisualChild<T>(child, childName);
-                if (result != null)
-                    return result;
+                case FileConflictChoice.Skip:
+                    ShowInfoBar("Modo: Ignorar - Arquivos existentes serão mantidos, apenas novos serão copiados.", InfoBarSeverity.Informational);
+                    break;
             }
-
-            return null;
-        }
-
-        // Helper method para encontrar todos os elementos de um tipo
-        private List<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
-        {
-            var children = new List<T>();
-            if (parent == null) return children;
-
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-
-                if (child is T typedChild)
-                {
-                    children.Add(typedChild);
-                }
-
-                children.AddRange(FindVisualChildren<T>(child));
-            }
-
-            return children;
-        }
-
-        // Manter método antigo para compatibilidade
-        private T? FindDescendant<T>(DependencyObject parent, Func<T, bool>? predicate = null) where T : DependencyObject
-        {
-            if (parent == null) return null;
-
-            int childCount = VisualTreeHelper.GetChildrenCount(parent);
-            for (int i = 0; i < childCount; i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                
-                if (child is T typedChild && (predicate == null || predicate(typedChild)))
-                {
-                    return typedChild;
-                }
-
-                var descendant = FindDescendant<T>(child, predicate);
-                if (descendant != null)
-                {
-                    return descendant;
-                }
-            }
-
-            return null;
         }
 
         private async Task<ContentDialogResult> ShowErrorDialogAsync(string title, string message)
@@ -1309,45 +1228,33 @@ namespace RoboCopy_X
         {
             var sb = new StringBuilder();
             
-            // Get the source folder name to preserve folder structure
             var sourceFolderName = System.IO.Path.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
             var destinationWithFolder = System.IO.Path.Combine(DestinationPathTextBox.Text, sourceFolderName);
             
-            // Add source and destination (destination includes source folder name)
             sb.Append($"\"{SourcePathTextBox.Text}\" \"{destinationWithFolder}\"");
 
-            // Copy subdirectories
             if (CopySubdirectoriesCheckBox.IsChecked == true)
             {
                 sb.Append(" /E");
             }
 
-            // Mirror
             if (MirrorCheckBox.IsChecked == true)
             {
                 sb.Append(" /MIR");
             }
 
-            // CRÍTICO: Aplicar flags de conflito de arquivos ANTES de outras flags
             if (_fileConflictChoice == FileConflictChoice.Skip)
             {
-                // Para ignorar TODOS os arquivos existentes, usar /XC /XN /XO
-                // /XC = Exclui arquivos alterados (Changed)
-                // /XN = Exclui arquivos mais novos (Newer) 
-                // /XO = Exclui arquivos mais antigos (Older)
-                // Juntas, essas flags fazem o Robocopy ignorar qualquer arquivo que já existe
                 sb.Append(" /XC /XN /XO");
             }
             else
             {
-                // Exclude older (apenas se não estiver no modo Skip)
                 if (ExcludeOlderCheckBox.IsChecked == true)
                 {
                     sb.Append(" /XO");
                 }
             }
 
-            // Copy attributes
             var copyFlags = new StringBuilder();
             if (CopyDataCheckBox.IsChecked == true) copyFlags.Append("D");
             if (CopyAttributesCheckBox.IsChecked == true) copyFlags.Append("A");
@@ -1361,29 +1268,19 @@ namespace RoboCopy_X
                 sb.Append($" /COPY:{copyFlags}");
             }
 
-            // Multi-thread
             if (MultiThreadCheckBox.IsChecked == true)
             {
                 var threadCount = (int)ThreadCountNumberBox.Value;
                 sb.Append($" /MT:{threadCount}");
             }
 
-            // Retry count
             sb.Append($" /R:{(int)RetryCountNumberBox.Value}");
-
-            // Wait time
             sb.Append($" /W:{(int)WaitTimeNumberBox.Value}");
-
-            // SEMPRE adicionar saída detalhada (verbose) para logs completos
             sb.Append(" /V");
-            
-            // NUNCA adicionar /NP - sempre mostrar porcentagem de progresso
 
-            // Always add log file
             var logPath = GetLogFilePath();
             sb.Append($" /LOG:\"{logPath}\"");
             
-            // Store log path for later reference
             CommandPreviewTextBox.Text = $"Log será salvo em: {logPath}";
 
             return sb.ToString();
@@ -1393,7 +1290,6 @@ namespace RoboCopy_X
         {
             string? destinationPath = null;
             
-            // Extract destination path from arguments for later use
             try
             {
                 var sourceFolderName = System.IO.Path.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
@@ -1424,7 +1320,6 @@ namespace RoboCopy_X
                     EnableRaisingEvents = true
                 };
 
-                // Handle output
                 _currentProcess.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
@@ -1433,28 +1328,24 @@ namespace RoboCopy_X
                         {
                             AppendOutput(e.Data + "\n");
                             
-                            // Extract percentage from output (Robocopy shows: "X.X%")
-                            var percentMatch = System.Text.RegularExpressions.Regex.Match(e.Data, @"(\d+(?:\.\d+)?)\s*%");
+                            var percentMatch = System.Text.RegularExpressions.Regex.Match(e.Data, @"(\d+(?:\.\d+)?)\s*%
+                            ");
                             if (percentMatch.Success && double.TryParse(percentMatch.Groups[1].Value, out double percent))
                             {
                                 UpdateProgress(percent);
                             }
                             
-                            // Extract file being copied - Multiple patterns for better detection
-                            // Pattern 1: Standard Robocopy output format with file status
                             var filePattern1 = System.Text.RegularExpressions.Regex.Match(
                                 e.Data, 
                                 @"^\s*(?:New File|Newer|Older|same|modified|\*EXTRA File)\s+[\d\.,]+\s*[KMG]?B?\s+(.+)$",
                                 System.Text.RegularExpressions.RegexOptions.IgnoreCase
                             );
                             
-                            // Pattern 2: File path at the end of the line
                             var filePattern2 = System.Text.RegularExpressions.Regex.Match(
                                 e.Data,
                                 @"\s+([^\s]+\.\w{2,4})\s*$"
                             );
                             
-                            // Pattern 3: Full path detection
                             var filePattern3 = System.Text.RegularExpressions.Regex.Match(
                                 e.Data,
                                 @"[A-Za-z]:\\(?:[^\\/:*?""<>|\r\n]+\\)*([^\\/:*?""<>|\r\n]+\.\w+)"
@@ -1468,7 +1359,6 @@ namespace RoboCopy_X
                             }
                             else if (filePattern3.Success)
                             {
-                                // Get just the filename from full path
                                 fileName = filePattern3.Groups[1].Value.Trim();
                             }
                             else if (filePattern2.Success && 
@@ -1483,17 +1373,14 @@ namespace RoboCopy_X
                             
                             if (!string.IsNullOrEmpty(fileName))
                             {
-                                // Increment processed files counter
                                 _processedFiles++;
                                 
-                                // Truncate very long filenames
                                 if (fileName.Length > 50)
                                 {
                                     fileName = "..." + fileName.Substring(fileName.Length - 47);
                                 }
                                 UpdateProgressStatus($"📄 Copiando: {fileName}");
                                 
-                                // Update details if we know total files
                                 if (_totalFiles > 0 && ProgressDetailsText != null)
                                 {
                                     DispatcherQueue.TryEnqueue(() =>
@@ -1504,7 +1391,6 @@ namespace RoboCopy_X
                                 }
                             }
                             
-                            // Try to extract total files count from summary
                             var totalFilesMatch = System.Text.RegularExpressions.Regex.Match(
                                 e.Data,
                                 @"Files\s*:\s*(\d+)"
@@ -1516,8 +1402,7 @@ namespace RoboCopy_X
                                     _totalFiles = total;
                                 }
                             }
-                });
-
+                        });
                     }
                 };
 
@@ -1539,7 +1424,6 @@ namespace RoboCopy_X
                         AppendOutput($"Executando: robocopy.exe {arguments}\n");
                         AppendOutput("═══════════════════════════════════════════\n\n");
                         
-                        // Extract log path from arguments
                         var logMatch = System.Text.RegularExpressions.Regex.Match(arguments, @"/LOG:""([^""]+)""");
                         if (logMatch.Success)
                         {
@@ -1551,7 +1435,6 @@ namespace RoboCopy_X
                     _currentProcess.BeginOutputReadLine();
                     _currentProcess.BeginErrorReadLine();
 
-                    // Wait for process to exit or cancellation
                     while (!_currentProcess.WaitForExit(100))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1568,8 +1451,6 @@ namespace RoboCopy_X
                         if (exitCode < 8)
                         {
                             ShowInfoBar("Operação concluída com sucesso!", InfoBarSeverity.Success);
-                            
-                            // Show completion dialog with option to open destination folder
                             await ShowCompletionDialogAsync(destinationPath);
                         }
                         else
@@ -1596,24 +1477,21 @@ namespace RoboCopy_X
 
         private async Task ShowCompletionDialogAsync(string? destinationPath)
         {
-            // Create a beautiful styled content panel
             var contentPanel = new StackPanel
             {
                 Spacing = 20,
                 Margin = new Thickness(0, 8, 0, 8)
             };
 
-            // Success icon and message
             var messageStack = new StackPanel
             {
                 Spacing = 12,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
-            // Use FontIcon with Segoe Fluent Icons for proper rendering
             var successIcon = new FontIcon
             {
-                Glyph = "\uE73E", // CheckMark icon from Segoe Fluent Icons
+                Glyph = "\uE73E",
                 FontSize = 48,
                 FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.LimeGreen)
@@ -1632,7 +1510,6 @@ namespace RoboCopy_X
             messageStack.Children.Add(successMessage);
             contentPanel.Children.Add(messageStack);
 
-            // Destination path section
             if (!string.IsNullOrEmpty(destinationPath))
             {
                 var pathBorder = new Border
@@ -1646,7 +1523,6 @@ namespace RoboCopy_X
                 };
 
                 var pathStack = new StackPanel { Spacing = 6 };
-
                 var destinationLabel = new TextBlock
                 {
                     Text = "Pasta de Destino:",
@@ -1686,7 +1562,6 @@ namespace RoboCopy_X
             {
                 try
                 {
-                    // Open destination folder in Windows Explorer
                     if (Directory.Exists(destinationPath))
                     {
                         Process.Start(new ProcessStartInfo
@@ -1738,7 +1613,6 @@ namespace RoboCopy_X
             InfoBarMessage.Severity = severity;
             InfoBarMessage.IsOpen = true;
 
-            // Auto-close after 5 seconds for success messages if enabled
             if (severity == InfoBarSeverity.Success && _autoCloseInfoBarCheckBox?.IsChecked == true)
             {
                 var timer = DispatcherQueue.CreateTimer();
@@ -1764,7 +1638,6 @@ namespace RoboCopy_X
                 ProgressPercentageText.Text = $"{percentage:F1}%";
             }
             
-            // Calculate estimated time remaining
             if (percentage > 0 && percentage < 100)
             {
                 var elapsed = DateTime.Now - _operationStartTime;
@@ -1787,8 +1660,6 @@ namespace RoboCopy_X
                         timeText = $"{remaining.Seconds}s restantes";
                     }
                     
-                    // Only update time estimate if not showing a specific file
-                    // This prevents overwriting the "Copiando: arquivo.txt" message
                     if (!ProgressStatusText.Text.StartsWith("📄") && 
                         !ProgressStatusText.Text.Contains("Copiando:"))
                     {
@@ -1812,16 +1683,9 @@ namespace RoboCopy_X
 
         private void InitializeThreadOptions()
         {
-            // Get processor count (logical processors)
             _maxThreadCount = Environment.ProcessorCount;
-            
-            // Robocopy supports 1-128 threads
             int maxRobocopyThreads = Math.Min(_maxThreadCount * 2, 128);
-            
-            // Populate ComboBox with thread options
             var threadOptions = new List<ComboBoxItem>();
-            
-            // Add common presets
             var presets = new[] { 1, 2, 4, 8, 16, 32, 64, 128 };
             
             foreach (var count in presets)
@@ -1840,7 +1704,6 @@ namespace RoboCopy_X
                     
                     threadOptions.Add(item);
                     
-                    // Select the processor count as default
                     if (count == _maxThreadCount)
                     {
                         ThreadCountComboBox.SelectedItem = item;
@@ -1848,7 +1711,6 @@ namespace RoboCopy_X
                 }
             }
             
-            // If system has unusual thread count, add it
             if (!presets.Contains(_maxThreadCount))
             {
                 var systemItem = new ComboBoxItem
@@ -1857,7 +1719,6 @@ namespace RoboCopy_X
                     Tag = _maxThreadCount
                 };
                 
-                // Insert in sorted position
                 int insertIndex = threadOptions.FindIndex(t => (int)t.Tag > _maxThreadCount);
                 if (insertIndex == -1)
                     threadOptions.Add(systemItem);
@@ -1867,16 +1728,13 @@ namespace RoboCopy_X
                 ThreadCountComboBox.SelectedItem = systemItem;
             }
             
-            // Set items
             ThreadCountComboBox.ItemsSource = threadOptions;
             
-            // If nothing selected, select first item
             if (ThreadCountComboBox.SelectedIndex == -1 && threadOptions.Count > 0)
             {
                 ThreadCountComboBox.SelectedIndex = 0;
             }
             
-            // Update the hidden NumberBox
             UpdateThreadCountValue();
         }
 
@@ -1884,14 +1742,12 @@ namespace RoboCopy_X
         {
             var retryOptions = new List<ComboBoxItem>();
             
-            // Add 1 as first option
             retryOptions.Add(new ComboBoxItem
             {
                 Content = "1 tentativa",
                 Tag = 1
             });
             
-            // Add intervals of 10 from 10 to 100
             for (int i = 10; i <= 100; i += 10)
             {
                 retryOptions.Add(new ComboBoxItem
@@ -1901,21 +1757,14 @@ namespace RoboCopy_X
                 });
             }
             
-            // Set items
             RetryCountComboBox.ItemsSource = retryOptions;
-            
-            // Select 10 as default (index 1)
             RetryCountComboBox.SelectedIndex = 1;
-            
-            // Update the hidden NumberBox
             UpdateRetryCountValue();
         }
 
         private void InitializeWaitTimeOptions()
         {
             var waitTimeOptions = new List<ComboBoxItem>();
-            
-            // Add common wait time options in seconds
             var waitTimes = new[] { 1, 5, 10, 15, 30, 60, 120, 180, 300, 600 };
             
             foreach (var seconds in waitTimes)
@@ -1938,13 +1787,8 @@ namespace RoboCopy_X
                 });
             }
             
-            // Set items
             WaitTimeComboBox.ItemsSource = waitTimeOptions;
-            
-            // Select 5 seconds as default (index 1)
             WaitTimeComboBox.SelectedIndex = 1;
-            
-            // Update the hidden NumberBox
             UpdateWaitTimeValue();
         }
 
@@ -1974,14 +1818,11 @@ namespace RoboCopy_X
 
         private void InitializeAdminMode()
         {
-            // Verificar se já está rodando como admin
             _wasRunningAsAdminOnStart = Helpers.AdminPrivilegeHelper.IsRunningAsAdmin();
             _isAdminMode = _wasRunningAsAdminOnStart;
             
-            // Atualizar UI (será chamado após InitializeComponent)
             UpdateAdminModeUI();
             
-            // Se já estiver como admin, configurar o toggle
             if (_wasRunningAsAdminOnStart)
             {
                 if (AdminModeToggle != null)
@@ -1992,7 +1833,6 @@ namespace RoboCopy_X
                 
                 var (username, _) = Helpers.AdminPrivilegeHelper.GetCurrentUserInfo();
                 
-                // Usar DispatcherQueue para mostrar a mensagem após a UI estar pronta
                 DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
                 {
                     ShowInfoBar($"Aplicação iniciada com privilégios de Administrador (usuário: {username})", 
@@ -2005,7 +1845,6 @@ namespace RoboCopy_X
         {
             if (AdminModeToggle == null) return;
             
-            // Atualizar conteúdo visual baseado no estado
             if (_isAdminMode)
             {
                 if (AdminModeOnContent != null)
@@ -2013,7 +1852,6 @@ namespace RoboCopy_X
                 if (AdminModeOffContent != null)
                     AdminModeOffContent.Visibility = Visibility.Collapsed;
                 
-                // Atualizar título da janela
                 this.Title = "RoboCopy-X (Administrador)";
             }
             else
@@ -2023,7 +1861,6 @@ namespace RoboCopy_X
                 if (AdminModeOffContent != null)
                     AdminModeOffContent.Visibility = Visibility.Visible;
                 
-                // Título normal
                 this.Title = "RoboCopy-X";
             }
         }
@@ -2032,7 +1869,6 @@ namespace RoboCopy_X
         {
             if (sender is not ToggleButton toggle) return;
             
-            // Se já estava como admin no início, não permitir desativar
             if (_wasRunningAsAdminOnStart)
             {
                 toggle.IsChecked = true;
@@ -2045,19 +1881,16 @@ namespace RoboCopy_X
             
             if (toggle.IsChecked == true)
             {
-                // Usuário quer ativar modo admin
                 await ActivateAdminModeAsync();
             }
             else
             {
-                // Usuário quer desativar (teoricamente não deveria chegar aqui se já estava admin)
                 await DeactivateAdminModeAsync();
             }
         }
 
         private async Task ActivateAdminModeAsync()
         {
-            // Confirmar com o usuário
             var result = await ShowWarningDialogAsync(
                 "Ativar Modo Administrador",
                 "Para ativar o modo administrador, a aplicação precisa ser reiniciada.\n\n" +
@@ -2068,23 +1901,19 @@ namespace RoboCopy_X
             
             if (result != ContentDialogResult.Primary)
             {
-                // Usuário cancelou, voltar o toggle
                 AdminModeToggle.IsChecked = false;
                 UpdateAdminModeUI();
                 return;
             }
             
-            // Tentar reiniciar como admin
             var success = Helpers.AdminPrivilegeHelper.RestartAsAdmin();
             
             if (success)
             {
-                // Fechar a aplicação atual (a nova instância admin será aberta)
                 Application.Current.Exit();
             }
             else
             {
-                // Falhou ao reiniciar
                 AdminModeToggle.IsChecked = false;
                 UpdateAdminModeUI();
                 
@@ -2100,7 +1929,6 @@ namespace RoboCopy_X
 
         private async Task DeactivateAdminModeAsync()
         {
-            // Teoricamente isso não deveria ser chamado, mas vamos tratar
             AdminModeToggle.IsChecked = true;
             
             await ShowInfoDialogAsync(
@@ -2108,31 +1936,6 @@ namespace RoboCopy_X
                 "Uma vez que a aplicação está rodando com privilégios de administrador, " +
                 "não é possível removê-los durante a execução.\n\n" +
                 "Para executar sem privilégios de admin, feche e inicie a aplicação normalmente.");
-        }
-
-        private void ApplyFileConflictChoice(FileConflictChoice choice)
-        {
-            // Armazenar a escolha para uso posterior na construção do comando
-            _fileConflictChoice = choice;
-            
-            switch (choice)
-            {
-                case FileConflictChoice.Overwrite:
-                    // Sobrescrever: usa comportamento padrão do Robocopy (substitui)
-                    // Desmarcar o ExcludeOlderCheckBox para garantir que sobrescreva
-                    if (ExcludeOlderCheckBox != null)
-                    {
-                        ExcludeOlderCheckBox.IsChecked = false;
-                    }
-                    ShowInfoBar("Modo: Sobrescrever - Arquivos existentes serão substituídos.", InfoBarSeverity.Informational);
-                    break;
-
-                case FileConflictChoice.Skip:
-                    // Ignorar: NÃO marcar apenas ExcludeOlderCheckBox
-                    // As flags /XC /XN /XO serão adicionadas diretamente no BuildRobocopyCommand
-                    ShowInfoBar("Modo: Ignorar - Arquivos existentes serão mantidos, apenas novos serão copiados.", InfoBarSeverity.Informational);
-                    break;
-            }
         }
     }
 }

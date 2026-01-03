@@ -133,6 +133,242 @@
                          IsOpen="False" 
                          IsClosable="True"/>
 
+                <!-- Execute Operation Section - NOW AT TOP -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE768;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="Executar Operação" 
+                                      FontWeight="SemiBold"
+                                      FontSize="18"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <StackPanel Orientation="Horizontal" 
+                                   Spacing="12" 
+                                   HorizontalAlignment="Center">
+                            <Button x:Name="ExecuteButton" 
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="ExecuteButton_Click"
+                                    MinWidth="180"
+                                    Height="48"
+                                    CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE768;" FontSize="20"/>
+                                    <TextBlock Text="Executar" FontSize="16" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="CancelButton" 
+                                    Click="CancelButton_Click"
+                                    IsEnabled="False"
+                                    MinWidth="180"
+                                    Height="48"
+                                    CornerRadius="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE711;" FontSize="20"/>
+                                    <TextBlock Text="Cancelar" FontSize="16" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Informational Message -->
+                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12,8"
+                                Margin="0,12,0,0"
+                                HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE946;" 
+                                         FontSize="16"
+                                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock Text="Configure seu modo de transferência abaixo"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Progress Section with Percentage -->
+                        <StackPanel x:Name="ProgressSection" 
+                                   Spacing="8"
+                                   Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <ProgressBar x:Name="ProgressBar" 
+                                            Grid.Column="0"
+                                            IsIndeterminate="False" 
+                                            Value="0"
+                                            Maximum="100"
+                                            Height="10"
+                                            CornerRadius="5"
+                                            VerticalAlignment="Center"/>
+                                
+                                <TextBlock x:Name="ProgressPercentageText"
+                                          Grid.Column="1"
+                                          Text="0%"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          Margin="16,0,0,0"
+                                          VerticalAlignment="Center"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Grid>
+                            
+                            <TextBlock x:Name="ProgressStatusText"
+                                      Text="Preparando..."
+                                      FontSize="13"
+                                      FontWeight="SemiBold"
+                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                      TextAlignment="Center"
+                                      TextTrimming="CharacterEllipsis"
+                                      MaxLines="2"/>
+                            
+
+                            <TextBlock x:Name="ProgressDetailsText"
+                                      Text=""
+                                      FontSize="11"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      TextAlignment="Center"
+                                      Visibility="Collapsed"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Disk Space Information Card - IMPROVED STYLING -->
+                <Border x:Name="DiskSpaceInfoCard"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Icon -->
+                        <Border Grid.Column="0"
+                                Width="48"
+                                Height="48"
+                                CornerRadius="24"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                Margin="0,0,16,0">
+                            <FontIcon Glyph="&#xEDA2;" 
+                                     FontSize="24"
+                                     Foreground="White"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Information -->
+                        <StackPanel Grid.Column="1" 
+                                   Spacing="8"
+                                   VerticalAlignment="Center">
+                            <TextBlock x:Name="DiskSpaceTitle"
+                                      Text="✅ Espaço suficiente disponível"
+                                      FontSize="16"
+                                      FontWeight="SemiBold"
+                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Required -->
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                          Text="Necessário:"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          Margin="0,0,12,4"/>
+                                <TextBlock x:Name="DiskSpaceRequired"
+                                          Grid.Row="0" Grid.Column="1"
+                                          Text="0 GB"
+                                          FontSize="13"
+                                          FontWeight="SemiBold"
+                                          Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                          Margin="0,0,0,4"/>
+
+                                <!-- Available -->
+                                <TextBlock Grid.Row="1" Grid.Column="0"
+                                          Text="Disponível:"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          Margin="0,0,12,4"/>
+                                <TextBlock x:Name="DiskSpaceAvailable"
+                                          Grid.Row="1" Grid.Column="1"
+                                          Text="0 GB"
+                                          FontSize="13"
+                                          FontWeight="SemiBold"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                          Margin="0,0,0,4"/>
+
+                                <!-- Safety Margin -->
+                                <TextBlock Grid.Row="2" Grid.Column="0"
+                                          Text="Margem de segurança:"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          Margin="0,0,12,4"/>
+                                <TextBlock x:Name="DiskSpaceMargin"
+                                          Grid.Row="2" Grid.Column="1"
+                                          Text="0 MB"
+                                          FontSize="13"
+                                          FontWeight="SemiBold"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          Margin="0,0,0,4"/>
+
+                                <!-- After Copy -->
+                                <TextBlock Grid.Row="3" Grid.Column="0"
+                                          Text="Após cópia:"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          Margin="0,0,12,0"/>
+                                <TextBlock x:Name="DiskSpaceAfter"
+                                          Grid.Row="3" Grid.Column="1"
+                                          Text="~0 GB livres"
+                                          FontSize="13"
+                                          FontWeight="SemiBold"
+                                          Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Close Button -->
+                        <Button Grid.Column="2"
+                                x:Name="DiskSpaceCloseButton"
+                                Click="DiskSpaceCloseButton_Click"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                VerticalAlignment="Top"
+                                ToolTipService.ToolTip="Fechar">
+                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
                 <!-- Paths Card with improved visual hierarchy -->
                 <Expander Header="Caminhos de Origem e Destino"
                           IsExpanded="True"
@@ -419,92 +655,6 @@
                     </Grid>
                 </Expander>
 
-                <!-- Action Buttons with improved design -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="20">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="Executar Operação" 
-                                  FontWeight="SemiBold"
-                                  FontSize="16"/>
-                        
-                        <StackPanel Orientation="Horizontal" 
-                                   Spacing="12" 
-                                   HorizontalAlignment="Center">
-                            <Button x:Name="ExecuteButton" 
-                                    Style="{StaticResource AccentButtonStyle}"
-                                    Click="ExecuteButton_Click"
-                                    MinWidth="160"
-                                    Height="44"
-                                    CornerRadius="8">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon Glyph="&#xE768;" FontSize="18"/>
-                                    <TextBlock Text="Executar" FontSize="15" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button x:Name="CancelButton" 
-                                    Click="CancelButton_Click"
-                                    IsEnabled="False"
-                                    MinWidth="160"
-                                    Height="44"
-                                    CornerRadius="8">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon Glyph="&#xE711;" FontSize="18"/>
-                                    <TextBlock Text="Cancelar" FontSize="15" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-
-                        <!-- Progress Section with Percentage -->
-                        <StackPanel x:Name="ProgressSection" 
-                                   Spacing="8"
-                                   Visibility="Collapsed">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <ProgressBar x:Name="ProgressBar" 
-                                            Grid.Column="0"
-                                            IsIndeterminate="False" 
-                                            Value="0"
-                                            Maximum="100"
-                                            Height="10"
-                                            CornerRadius="5"
-                                            VerticalAlignment="Center"/>
-                                
-                                <TextBlock x:Name="ProgressPercentageText"
-                                          Grid.Column="1"
-                                          Text="0%"
-                                          FontSize="16"
-                                          FontWeight="Bold"
-                                          Margin="16,0,0,0"
-                                          VerticalAlignment="Center"
-                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                            </Grid>
-                            
-                            <TextBlock x:Name="ProgressStatusText"
-                                      Text="Preparando..."
-                                      FontSize="13"
-                                      FontWeight="SemiBold"
-                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                      TextAlignment="Center"
-                                      TextTrimming="CharacterEllipsis"
-                                      MaxLines="2"/>
-                            
-                            <TextBlock x:Name="ProgressDetailsText"
-                                      Text=""
-                                      FontSize="11"
-                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                      TextAlignment="Center"
-                                      Visibility="Collapsed"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
             </StackPanel>
             </Grid>
         </ScrollViewer>
