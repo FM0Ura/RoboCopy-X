@@ -8,24 +8,37 @@ using Windows.Storage;
 namespace RoboCopy_X.Services
 {
     /// <summary>
-    /// Serviço responsável por gerenciar operações de drag and drop para seleção de pastas.
+    /// Serviço responsável por gerenciar operações de drag and drop para seleção de pastas e arquivos.
     /// </summary>
     public class DragDropHandler
     {
         private readonly Action<string> _onPathSelected;
         private readonly Action<string, InfoBarSeverity> _onError;
+        private bool _acceptFilesOnly;
 
         /// <summary>
         /// Inicializa uma nova instância do manipulador de drag and drop.
         /// </summary>
         /// <param name="onPathSelected">Callback chamado quando um caminho é selecionado</param>
         /// <param name="onError">Callback chamado quando ocorre um erro</param>
+        /// <param name="acceptFilesOnly">Se true, aceita apenas arquivos; se false, aceita pastas</param>
         public DragDropHandler(
             Action<string> onPathSelected,
-            Action<string, InfoBarSeverity>? onError = null)
+            Action<string, InfoBarSeverity>? onError = null,
+            bool acceptFilesOnly = false)
         {
             _onPathSelected = onPathSelected ?? throw new ArgumentNullException(nameof(onPathSelected));
             _onError = onError ?? ((msg, sev) => { }); // Default: não faz nada
+            _acceptFilesOnly = acceptFilesOnly;
+        }
+
+        /// <summary>
+        /// Define se o handler deve aceitar apenas arquivos ou apenas pastas.
+        /// </summary>
+        public bool AcceptFilesOnly
+        {
+            get => _acceptFilesOnly;
+            set => _acceptFilesOnly = value;
         }
 
         /// <summary>
@@ -81,22 +94,35 @@ namespace RoboCopy_X.Services
                         
                         if (item is StorageFolder folder)
                         {
+                            if (_acceptFilesOnly)
+                            {
+                                _onError("Por favor, arraste um arquivo, não uma pasta.", InfoBarSeverity.Warning);
+                                return;
+                            }
                             _onPathSelected(folder.Path);
                         }
                         else if (item is StorageFile file)
                         {
-                            // Se for arquivo, usa o diretório pai
-                            try
+                            if (_acceptFilesOnly)
                             {
-                                var parentFolder = await file.GetParentAsync();
-                                if (parentFolder != null)
-                                {
-                                    _onPathSelected(parentFolder.Path);
-                                }
+                                // Modo arquivo - aceitar o arquivo diretamente
+                                _onPathSelected(file.Path);
                             }
-                            catch
+                            else
                             {
-                                _onError("Não foi possível obter a pasta do arquivo.", InfoBarSeverity.Error);
+                                // Modo pasta - usar o diretório pai
+                                try
+                                {
+                                    var parentFolder = await file.GetParentAsync();
+                                    if (parentFolder != null)
+                                    {
+                                        _onPathSelected(parentFolder.Path);
+                                    }
+                                }
+                                catch
+                                {
+                                    _onError("Não foi possível obter a pasta do arquivo.", InfoBarSeverity.Error);
+                                }
                             }
                         }
                     }

@@ -372,7 +372,7 @@ Contribuições são muito bem-vindas! 🎉
 
 ### 📅 Versão 1.1 (Em Breve)
 
-- [ ] 🔐 **Validação HASH**: Verificação de integridade de arquivos utilizando HASH
+- [ ] 🔐 **Validação HASH**: Verificação de integr
 - [ ] 💾 **Perfis Salvos**: Salve configurações favoritas
 - [ ] 📜 **Histórico**: Veja operações anteriores
 - [ ] 📊 **Estatísticas**: Gráficos de desempenho

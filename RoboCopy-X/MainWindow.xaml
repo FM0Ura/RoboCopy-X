@@ -242,6 +242,116 @@
                                       TextAlignment="Center"
                                       Visibility="Collapsed"/>
                         </StackPanel>
+
+                        <!-- Hash Validation Results Card -->
+                        <Border x:Name="HashValidationCard"
+                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,16,0,0"
+                                Visibility="Collapsed">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                        <FontIcon x:Name="HashValidationIcon"
+                                                 Glyph="&#xE72E;" 
+                                                 FontSize="16"
+                                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="Validação de Hash"
+                                                  FontSize="14"
+                                                  FontWeight="SemiBold"
+                                                  VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            x:Name="ViewHashLogsButton"
+                                            Click="ViewHashLogsButton_Click"
+                                            Style="{StaticResource SubtleButtonStyle}"
+                                            ToolTipService.ToolTip="Ver logs detalhados">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE7C3;" FontSize="14"/>
+                                            <TextBlock Text="Ver Logs" FontSize="12"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Source Hash -->
+                                    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+                                        <TextBlock Text="Hash Origem:"
+                                                  FontSize="11"
+                                                  FontWeight="SemiBold"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                               BorderThickness="1"
+                                               CornerRadius="4"
+                                               Padding="8,6">
+                                            <TextBlock x:Name="SourceHashText"
+                                                      Text="-"
+                                                      FontFamily="Consolas"
+                                                      FontSize="11"
+                                                      TextWrapping="Wrap"
+                                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Destination Hash -->
+                                    <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,8">
+                                        <TextBlock Text="Hash Destino:"
+                                                  FontSize="11"
+                                                  FontWeight="SemiBold"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                               BorderThickness="1"
+                                               CornerRadius="4"
+                                               Padding="8,6">
+                                            <TextBlock x:Name="DestinationHashText"
+                                                      Text="-"
+                                                      FontFamily="Consolas"
+                                                      FontSize="11"
+                                                      TextWrapping="Wrap"
+                                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Validation Result -->
+                                    <Border Grid.Row="2"
+                                           x:Name="HashValidationResultBorder"
+                                           Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                           BorderThickness="0"
+                                           CornerRadius="4"
+                                           Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="HashValidationResultIcon"
+                                                     Glyph="&#xE73E;"
+                                                     FontSize="14"
+                                                     Foreground="White"/>
+                                            <TextBlock x:Name="HashValidationResultText"
+                                                      Text="Hashes são idênticos - Arquivo íntegro"
+                                                      FontSize="12"
+                                                      FontWeight="SemiBold"
+                                                      Foreground="White"
+                                                      VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -387,6 +497,146 @@
                     </Expander.HeaderTemplate>
                     
                     <StackPanel Spacing="16" Margin="0,16,0,0">
+                        <!-- Transfer Mode Toggle -->
+                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0"
+                                         Glyph="&#xE946;" 
+                                         FontSize="16"
+                                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,12,0"/>
+
+                                <StackPanel Grid.Column="1" 
+                                           VerticalAlignment="Center"
+                                           Spacing="2">
+                                    <TextBlock Text="Modo de transferência"
+                                              FontSize="13"
+                                              FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TransferModeDescription"
+                                              Text="Selecione se deseja transferir pastas ou arquivos individuais"
+                                              FontSize="11"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2"
+                                           Orientation="Horizontal"
+                                           Spacing="8"
+                                           VerticalAlignment="Center">
+                                    <RadioButton x:Name="FolderModeRadioButton"
+                                                Content="Pasta"
+                                                IsChecked="True"
+                                                GroupName="TransferMode"
+                                                Checked="TransferModeRadioButton_Checked">
+                                        <RadioButton.Template>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Grid>
+                                                    <Border x:Name="ButtonBorder"
+                                                           Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                           BorderThickness="1"
+                                                           CornerRadius="4"
+                                                           Padding="12,6"
+                                                           MinWidth="80">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <FontIcon x:Name="FolderIcon"
+                                                                     Glyph="&#xE8B7;" 
+                                                                     FontSize="14"
+                                                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                            <TextBlock x:Name="ButtonText"
+                                                                      Text="{TemplateBinding Content}"
+                                                                      FontSize="12"
+                                                                      VerticalAlignment="Center"
+                                                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <VisualStateManager.VisualStateGroups>
+                                                        <VisualStateGroup x:Name="CheckStates">
+                                                            <VisualState x:Name="Checked">
+                                                                <VisualState.Setters>
+                                                                    <Setter Target="ButtonBorder.Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                                    <Setter Target="ButtonBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                                    <Setter Target="FolderIcon.Foreground" Value="White"/>
+                                                                    <Setter Target="ButtonText.Foreground" Value="White"/>
+                                                                    <Setter Target="ButtonText.FontWeight" Value="SemiBold"/>
+                                                                </VisualState.Setters>
+                                                            </VisualState>
+                                                            <VisualState x:Name="Unchecked"/>
+                                                        </VisualStateGroup>
+                                                    </VisualStateManager.VisualStateGroups>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </RadioButton.Template>
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip>
+                                                <TextBlock Text="Transferir pasta completa (recomendado)" MaxWidth="200" TextWrapping="Wrap"/>
+                                            </ToolTip>
+                                        </ToolTipService.ToolTip>
+                                    </RadioButton>
+
+                                    <RadioButton x:Name="FileModeRadioButton"
+                                                Content="Arquivo"
+                                                GroupName="TransferMode"
+                                                Checked="TransferModeRadioButton_Checked">
+                                        <RadioButton.Template>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Grid>
+                                                    <Border x:Name="ButtonBorder"
+                                                           Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                           BorderThickness="1"
+                                                           CornerRadius="4"
+                                                           Padding="12,6"
+                                                           MinWidth="80">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <FontIcon x:Name="FileIcon"
+                                                                     Glyph="&#xE8A5;" 
+                                                                     FontSize="14"
+                                                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                            <TextBlock x:Name="ButtonText"
+                                                                      Text="{TemplateBinding Content}"
+                                                                      FontSize="12"
+                                                                      VerticalAlignment="Center"
+                                                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <VisualStateManager.VisualStateGroups>
+                                                        <VisualStateGroup x:Name="CheckStates">
+                                                            <VisualState x:Name="Checked">
+                                                                <VisualState.Setters>
+                                                                    <Setter Target="ButtonBorder.Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                                    <Setter Target="ButtonBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                                    <Setter Target="FileIcon.Foreground" Value="White"/>
+                                                                    <Setter Target="ButtonText.Foreground" Value="White"/>
+                                                                    <Setter Target="ButtonText.FontWeight" Value="SemiBold"/>
+                                                                </VisualState.Setters>
+                                                            </VisualState>
+                                                            <VisualState x:Name="Unchecked"/>
+                                                        </VisualStateGroup>
+                                                    </VisualStateManager.VisualStateGroups>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </RadioButton.Template>
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip>
+                                                <TextBlock Text="Transferir arquivos individuais" MaxWidth="200" TextWrapping="Wrap"/>
+                                            </ToolTip>
+                                        </ToolTipService.ToolTip>
+                                    </RadioButton>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                         <!-- Source Path with improved design -->
                         <StackPanel Spacing="8">
                             <TextBlock Text="Pasta de Origem" 
@@ -648,6 +898,85 @@
                                                   HorizontalAlignment="Stretch"
                                                   SelectionChanged="WaitTimeComboBox_SelectionChanged"
                                                   ToolTipService.ToolTip="Tempo de espera entre tentativas (/W)"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Hash Validation Card -->
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="Validação de Integridade" 
+                                                  FontWeight="SemiBold"
+                                                  FontSize="14"
+                                                  VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="EnableHashValidationCheckBox" 
+                                              Content="Validar integridade com hash"
+                                              Checked="EnableHashValidationCheckBox_Checked"
+                                              Unchecked="EnableHashValidationCheckBox_Unchecked">
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip>
+                                                <StackPanel Spacing="4" MaxWidth="300">
+                                                    <TextBlock Text="Validação de Hash" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="Após a cópia, calcula e compara o hash dos arquivos de origem e destino para garantir integridade dos dados." 
+                                                              TextWrapping="Wrap"
+                                                              FontSize="12"
+                                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </ToolTipService.ToolTip>
+                                    </CheckBox>
+
+                                    <StackPanel Spacing="8" Margin="24,0,0,0" x:Name="HashAlgorithmPanel" Visibility="Collapsed">
+                                        <TextBlock Text="Algoritmo de hash:" 
+                                                  FontSize="12"
+                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ComboBox x:Name="HashAlgorithmComboBox" 
+                                                  HorizontalAlignment="Stretch"
+                                                  SelectionChanged="HashAlgorithmComboBox_SelectionChanged">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip>
+                                                    <StackPanel Spacing="4" MaxWidth="400">
+                                                        <TextBlock Text="Algoritmos de Hash Disponíveis" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="SHA-2 (Tradicionais):" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,2"/>
+                                                        <TextBlock Text="• MD5: Mais rápido, menos seguro (obsoleto)" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA-1: Rápido, boa compatibilidade (obsoleto)" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA-256: Recomendado - equilíbrio ideal" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA-384: Seguro, bom desempenho" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA-512: Mais seguro, mais lento" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="SHA-3 (Modernos - NIST 2015):" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,2"/>
+                                                        <TextBlock Text="• SHA3-256: Padrão moderno, resistente a ataques" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA3-384: Segurança avançada" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="• SHA3-512: Máxima segurança, mais lento" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="BLAKE3 (Ultra-moderno):" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,2"/>
+                                                        <TextBlock Text="• BLAKE3: Ultra-rápido, muito seguro, paralelizado" TextWrapping="Wrap" FontSize="11"/>
+                                                        <TextBlock Text="  Ideal para grandes volumes de dados" TextWrapping="Wrap" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                                    </StackPanel>
+                                                </ToolTip>
+                                            </ToolTipService.ToolTip>
+                                        </ComboBox>
+                                        
+                                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="8"
+                                                Margin="0,4,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE946;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                                <TextBlock Text="A validação ocorrerá após a conclusão da cópia"
+                                                          FontSize="11"
+                                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                          TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

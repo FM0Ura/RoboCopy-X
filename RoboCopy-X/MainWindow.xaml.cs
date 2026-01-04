@@ -51,6 +51,12 @@ namespace RoboCopy_X
         private bool _isAdminMode = false;
         private bool _wasRunningAsAdminOnStart = false;
 
+        // Transfer mode state
+        private bool _isFileMode = false;
+
+        // Hash validation result for interactive display
+        private HashValidationResult? _lastHashValidationResult = null;
+
         // Settings UI controls
         private ComboBox? _themeComboBox;
         private CheckBox? _micaBackdropCheckBox;
@@ -144,6 +150,7 @@ namespace RoboCopy_X
             InitializeThreadOptions();
             InitializeRetryOptions();
             InitializeWaitTimeOptions();
+            InitializeHashAlgorithmOptions();
             UpdateThreadCountState();
         }
 
@@ -267,6 +274,18 @@ namespace RoboCopy_X
             }
         }
 
+        /// <summary>
+        /// Manipula a mudança do modo de transferência (pasta/arquivo).
+        /// </summary>
+        private void TransferModeRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton radioButton)
+            {
+                _isFileMode = radioButton == FileModeRadioButton;
+                UpdateTransferModeUI();
+            }
+        }
+
         #endregion
 
         #region State Management
@@ -286,6 +305,94 @@ namespace RoboCopy_X
             if (ThreadCountNumberBox != null)
             {
                 ThreadCountNumberBox.IsEnabled = isEnabled;
+            }
+        }
+
+        /// <summary>
+        /// Atualiza a interface do usuário baseado no modo de transferência selecionado.
+        /// </summary>
+        private void UpdateTransferModeUI()
+        {
+            // Atualizar os DragDropHandlers
+            if (_sourceDragDropHandler != null)
+            {
+                _sourceDragDropHandler.AcceptFilesOnly = _isFileMode;
+            }
+            
+            if (_destinationDragDropHandler != null)
+            {
+                _destinationDragDropHandler.AcceptFilesOnly = false; // Destino sempre aceita pastas
+            }
+
+            if (_isFileMode)
+            {
+                // Modo de arquivo - atualizar labels e placeholders
+                if (SourcePlaceholder?.Children.Count > 0)
+                {
+                    var textBlock = SourcePlaceholder.Children[1] as TextBlock;
+                    if (textBlock != null)
+                        textBlock.Text = "Arraste um arquivo aqui";
+                }
+                
+                if (DestinationPlaceholder?.Children.Count > 0)
+                {
+                    var textBlock = DestinationPlaceholder.Children[1] as TextBlock;
+                    if (textBlock != null)
+                        textBlock.Text = "Arraste uma pasta de destino aqui";
+                }
+
+                // Atualizar descrição do modo
+                if (TransferModeDescription != null)
+                {
+                    TransferModeDescription.Text = "Arquivos individuais serão copiados para a pasta de destino";
+                }
+
+                // Desabilitar algumas opções que não fazem sentido para arquivos individuais
+                if (CopySubdirectoriesCheckBox != null)
+                {
+                    CopySubdirectoriesCheckBox.IsEnabled = false;
+                    CopySubdirectoriesCheckBox.IsChecked = false;
+                }
+                
+                if (MirrorCheckBox != null)
+                {
+                    MirrorCheckBox.IsEnabled = false;
+                    MirrorCheckBox.IsChecked = false;
+                }
+            }
+            else
+            {
+                // Modo de pasta - restaurar labels originais
+                if (SourcePlaceholder?.Children.Count > 0)
+                {
+                    var textBlock = SourcePlaceholder.Children[1] as TextBlock;
+                    if (textBlock != null)
+                        textBlock.Text = "Arraste uma pasta aqui";
+                }
+                
+                if (DestinationPlaceholder?.Children.Count > 0)
+                {
+                    var textBlock = DestinationPlaceholder.Children[1] as TextBlock;
+                    if (textBlock != null)
+                        textBlock.Text = "Arraste uma pasta aqui";
+                }
+
+                // Atualizar descrição do modo
+                if (TransferModeDescription != null)
+                {
+                    TransferModeDescription.Text = "Pastas completas serão copiadas (estrutura de diretórios preservada)";
+                }
+
+                // Habilitar opções novamente
+                if (CopySubdirectoriesCheckBox != null)
+                {
+                    CopySubdirectoriesCheckBox.IsEnabled = true;
+                }
+                
+                if (MirrorCheckBox != null)
+                {
+                    MirrorCheckBox.IsEnabled = true;
+                }
             }
         }
 
@@ -944,10 +1051,25 @@ namespace RoboCopy_X
         {
             var sb = new StringBuilder();
             
-            var sourceFolderName = IOPath.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
-            var destinationWithFolder = IOPath.Combine(DestinationPathTextBox.Text, sourceFolderName);
-            
-            sb.Append($"\"{SourcePathTextBox.Text}\" \"{destinationWithFolder}\"");
+            if (_isFileMode)
+            {
+                // Modo arquivo: copiar arquivo individual
+                var sourceFile = SourcePathTextBox.Text;
+                var sourceDirectory = IOPath.GetDirectoryName(sourceFile);
+                var fileName = IOPath.GetFileName(sourceFile);
+                var destinationDirectory = DestinationPathTextBox.Text;
+                
+                // Robocopy precisa: pasta_origem pasta_destino arquivo
+                sb.Append($"\"{sourceDirectory}\" \"{destinationDirectory}\" \"{fileName}\"");
+            }
+            else
+            {
+                // Modo pasta: copiar pasta completa
+                var sourceFolderName = IOPath.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
+                var destinationWithFolder = IOPath.Combine(DestinationPathTextBox.Text, sourceFolderName);
+                
+                sb.Append($"\"{SourcePathTextBox.Text}\" \"{destinationWithFolder}\"");
+            }
 
             if (CopySubdirectoriesCheckBox.IsChecked == true)
             {
@@ -1017,8 +1139,18 @@ namespace RoboCopy_X
             
             try
             {
-                var sourceFolderName = IOPath.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
-                destinationPath = IOPath.Combine(DestinationPathTextBox.Text, sourceFolderName);
+                if (_isFileMode)
+                {
+                    // Modo arquivo: destino é a pasta + nome do arquivo
+                    var fileName = IOPath.GetFileName(SourcePathTextBox.Text);
+                    destinationPath = IOPath.Combine(DestinationPathTextBox.Text, fileName);
+                }
+                else
+                {
+                    // Modo pasta: destino é pasta + nome da pasta origem
+                    var sourceFolderName = IOPath.GetFileName(SourcePathTextBox.Text.TrimEnd('\\', '/'));
+                    destinationPath = IOPath.Combine(DestinationPathTextBox.Text, sourceFolderName);
+                }
             }
             catch
             {
@@ -1159,6 +1291,12 @@ namespace RoboCopy_X
 
                         if (exitCode < 8)
                         {
+                            // Executar validação de hash se estiver habilitada
+                            if (EnableHashValidationCheckBox?.IsChecked == true)
+                            {
+                                await PerformHashValidationAsync(SourcePathTextBox.Text, destinationPath, cancellationToken);
+                            }
+                            
                             _uiService?.ShowInfoBar("Operação concluída com sucesso!", InfoBarSeverity.Success);
                             await ShowCompletionDialogAsync(destinationPath);
                         }
@@ -1367,6 +1505,213 @@ namespace RoboCopy_X
                 title, message, this.Content.XamlRoot, primaryButtonText, closeButtonText);
         }
 
+        /// <summary>
+        /// Exibe um diálogo de alerta para falhas de validação de hash.
+        /// </summary>
+        private async Task<ContentDialogResult> ShowHashValidationFailureDialogAsync(HashValidationResult result)
+        {
+            var contentPanel = new StackPanel
+            {
+                Spacing = 16,
+                Margin = new Thickness(0, 8, 0, 8)
+            };
+
+            // Cabeçalho com ícone de erro
+            var headerStack = new StackPanel
+            {
+                Spacing = 12,
+                Orientation = Orientation.Horizontal
+            };
+
+            var errorIcon = new FontIcon
+            {
+                Glyph = "\uE7BA",
+                FontSize = 32,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+
+            var messageStack = new StackPanel { Spacing = 8 };
+            var errorCount = result.InvalidFiles + result.MissingFiles + result.ErrorFiles;
+            
+            var mainMessage = new TextBlock
+            {
+                Text = $"Validação de Hash Falhou!",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            var detailMessage = new TextBlock
+            {
+                Text = $"{errorCount} arquivo(s) não passaram na validação de integridade.",
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+
+            messageStack.Children.Add(mainMessage);
+            messageStack.Children.Add(detailMessage);
+            headerStack.Children.Add(errorIcon);
+            headerStack.Children.Add(messageStack);
+            contentPanel.Children.Add(headerStack);
+
+            // Estatísticas
+            var statsStack = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 0) };
+            
+            if (result.InvalidFiles > 0)
+            {
+                var invalidText = new TextBlock
+                {
+                    Text = $"❌ {result.InvalidFiles} arquivo(s) corrompido(s) (hash diferente)",
+                    FontSize = 13,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red)
+                };
+                statsStack.Children.Add(invalidText);
+            }
+
+            if (result.MissingFiles > 0)
+            {
+                var missingText = new TextBlock
+                {
+                    Text = $"⚠️ {result.MissingFiles} arquivo(s) ausente(s) no destino",
+                    FontSize = 13,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange)
+                };
+                statsStack.Children.Add(missingText);
+            }
+
+            if (result.ErrorFiles > 0)
+            {
+                var errorText = new TextBlock
+                {
+                    Text = $"⛔ {result.ErrorFiles} erro(s) ao processar arquivo(s)",
+                    FontSize = 13,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.DarkRed)
+                };
+                statsStack.Children.Add(errorText);
+            }
+
+            contentPanel.Children.Add(statsStack);
+
+            // Lista de arquivos com falha
+            if (result.FailedFiles.Count > 0)
+            {
+                var filesHeader = new TextBlock
+                {
+                    Text = "Arquivos com problema:",
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    Margin = new Thickness(0, 12, 0, 8)
+                };
+                contentPanel.Children.Add(filesHeader);
+
+                var scrollViewer = new ScrollViewer
+                {
+                    MaxHeight = 300,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                };
+
+                var filesBorder = new Border
+                {
+                    Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+                    BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(12)
+                };
+
+                var filesStack = new StackPanel { Spacing = 6 };
+                
+                int displayCount = 0;
+                int maxDisplay = 50; // Limitar a 50 arquivos para não sobrecarregar a UI
+
+                foreach (var file in result.FailedFiles)
+                {
+                    if (displayCount >= maxDisplay)
+                    {
+                        var moreText = new TextBlock
+                        {
+                            Text = $"... e mais {result.FailedFiles.Count - maxDisplay} arquivo(s)",
+                            FontSize = 12,
+                            FontStyle = Windows.UI.Text.FontStyle.Italic,
+                            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                        };
+                        filesStack.Children.Add(moreText);
+                        break;
+                    }
+
+                    var fileItem = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 8
+                    };
+
+                    var bulletIcon = new FontIcon
+                    {
+                        Glyph = "\uE711",
+                        FontSize = 12,
+                        Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    var fileNameText = new TextBlock
+                    {
+                        Text = file,
+                        FontSize = 12,
+                        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                        TextWrapping = TextWrapping.Wrap,
+                        IsTextSelectionEnabled = true,
+                        Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+                    };
+
+                    fileItem.Children.Add(bulletIcon);
+                    fileItem.Children.Add(fileNameText);
+                    filesStack.Children.Add(fileItem);
+                    
+                    displayCount++;
+                }
+
+                filesBorder.Child = filesStack;
+                scrollViewer.Content = filesBorder;
+                contentPanel.Children.Add(scrollViewer);
+            }
+
+            // Aviso final
+            var warningBorder = new Border
+            {
+                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(30, 255, 140, 0)),
+                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+
+            var warningText = new TextBlock
+            {
+                Text = "⚠️ Recomenda-se copiar os arquivos novamente ou verificar problemas de hardware/rede.",
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed)
+            };
+
+            warningBorder.Child = warningText;
+            contentPanel.Children.Add(warningBorder);
+
+            var dialog = new ContentDialog
+            {
+                Title = "⚠️ Arquivos com Falha na Validação",
+                Content = contentPanel,
+                CloseButtonText = "Entendi",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            return await dialog.ShowAsync();
+        }
         #endregion
 
         #region File Conflict Management
@@ -1587,14 +1932,27 @@ namespace RoboCopy_X
         }
 
         /// <summary>
-        /// Manipula o clique na área de origem para abrir o seletor de pastas.
+        /// Manipula o clique na área de origem para abrir o seletor de pastas ou arquivos.
         /// </summary>
         private async void SourceDropBorder_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            var folder = await PickFolderAsync();
-            if (folder != null)
+            if (_isFileMode)
             {
-                SetSourcePath(folder.Path);
+                // Modo arquivo - abrir seletor de arquivo
+                var file = await PickFileAsync();
+                if (file != null)
+                {
+                    SetSourcePath(file.Path);
+                }
+            }
+            else
+            {
+                // Modo pasta - abrir seletor de pasta
+                var folder = await PickFolderAsync();
+                if (folder != null)
+                {
+                    SetSourcePath(folder.Path);
+                }
             }
         }
 
@@ -1655,6 +2013,27 @@ namespace RoboCopy_X
             return await folderPicker.PickSingleFolderAsync();
         }
 
+        /// <summary>
+        /// Abre o seletor de arquivos do sistema.
+        /// </summary>
+        /// <returns>Arquivo selecionado ou null se cancelado</returns>
+        private async Task<StorageFile?> PickFileAsync()
+        {
+            var filePicker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.ComputerFolder,
+                ViewMode = PickerViewMode.List
+            };
+            
+            // Adicionar tipos de arquivo comuns
+            filePicker.FileTypeFilter.Add("*");
+
+            var hwnd = WindowNative.GetWindowHandle(this);
+            InitializeWithWindow.Initialize(filePicker, hwnd);
+
+            return await filePicker.PickSingleFileAsync();
+        }
+
         #endregion
 
         #region Execution Handlers
@@ -1694,6 +2073,12 @@ namespace RoboCopy_X
 
                 ExecuteButton.IsEnabled = false;
                 CancelButton.IsEnabled = true;
+
+                // Ocultar card de validação anterior
+                if (HashValidationCard != null)
+                {
+                    HashValidationCard.Visibility = Visibility.Collapsed;
+                }
 
                 _progressTracker?.StartOperation();
                 _uiService?.SetOutput("Iniciando Robocopy...\n\n");
@@ -1760,6 +2145,468 @@ namespace RoboCopy_X
         {
             // Implementar validação das entradas do usuário
             return true;
+        }
+
+        #endregion
+
+        #region Hash Validation
+
+        /// <summary>
+        /// Inicializa as opções de algoritmo de hash.
+        /// </summary>
+        private void InitializeHashAlgorithmOptions()
+        {
+            var hashOptions = new List<ComboBoxItem>();
+            
+            foreach (HashValidationService.HashAlgorithmType algorithm in Enum.GetValues(typeof(HashValidationService.HashAlgorithmType)))
+            {
+                hashOptions.Add(new ComboBoxItem
+                {
+                    Content = HashValidationService.GetAlgorithmDisplayName(algorithm),
+                    Tag = algorithm
+                });
+            }
+            
+            HashAlgorithmComboBox.ItemsSource = hashOptions;
+            // SHA256 é o índice 2 (MD5=0, SHA1=1, SHA256=2)
+            HashAlgorithmComboBox.SelectedIndex = 2; // SHA256 por padrão
+        }
+
+        /// <summary>
+        /// Manipula a marcação da checkbox de validação de hash.
+        /// </summary>
+        private void EnableHashValidationCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (HashAlgorithmPanel != null)
+            {
+                HashAlgorithmPanel.Visibility = Visibility.Visible;
+            }
+            
+            _uiService?.ShowInfoBar(
+                "Validação de hash ativada. A integridade dos arquivos será verificada após a cópia.",
+                InfoBarSeverity.Informational);
+        }
+
+        /// <summary>
+        /// Manipula a desmarcação da checkbox de validação de hash.
+        /// </summary>
+        private void EnableHashValidationCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (HashAlgorithmPanel != null)
+            {
+                HashAlgorithmPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>
+        /// Manipula mudança de seleção no ComboBox de algoritmo de hash.
+        /// </summary>
+        private void HashAlgorithmComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Não há ação necessária aqui, apenas para manter a consistência
+        }
+
+        /// <summary>
+        /// Manipula o clique no botão de ver logs detalhados de hash.
+        /// </summary>
+        private async void ViewHashLogsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowHashLogsDialogAsync();
+        }
+
+        /// <summary>
+        /// Exibe um diálogo com os logs detalhados de hash.
+        /// </summary>
+        private async Task ShowHashLogsDialogAsync()
+        {
+            var scrollViewer = new ScrollViewer
+            {
+                MaxHeight = 500,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+
+            var logTextBlock = new TextBlock
+            {
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                IsTextSelectionEnabled = true,
+                Text = OutputTextBlock?.Text ?? "Nenhum log disponível"
+            };
+
+            scrollViewer.Content = logTextBlock;
+
+            var dialog = new ContentDialog
+            {
+                Title = "Logs Detalhados de Validação",
+                Content = scrollViewer,
+                CloseButtonText = "Fechar",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+        }
+
+        /// <summary>
+        /// Realiza a validação de hash dos arquivos copiados.
+        /// </summary>
+        /// <param name="sourcePath">Caminho de origem</param>
+        /// <param name="destinationPath">Caminho de destino</param>
+        /// <param name="cancellationToken">Token de cancelamento</param>
+        private async Task PerformHashValidationAsync(string sourcePath, string? destinationPath, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(destinationPath))
+            {
+                return;
+            }
+
+            try
+            {
+                _uiService?.AppendOutput(Environment.NewLine + "═══════════════════════════════════════════" + Environment.NewLine);
+                _uiService?.AppendOutput("🔒 INICIANDO VALIDAÇÃO DE HASH" + Environment.NewLine);
+                _uiService?.AppendOutput("═══════════════════════════════════════════" + Environment.NewLine);
+
+                var hashService = new HashValidationService();
+                
+                // Obter algoritmo selecionado
+                var algorithm = HashValidationService.HashAlgorithmType.SHA256;
+                if (HashAlgorithmComboBox?.SelectedItem is ComboBoxItem item && item.Tag is HashValidationService.HashAlgorithmType selectedAlgorithm)
+                {
+                    algorithm = selectedAlgorithm;
+                }
+
+                _uiService?.AppendOutput($"Algoritmo: {HashValidationService.GetAlgorithmDisplayName(algorithm)}" + Environment.NewLine);
+                _uiService?.AppendOutput(Environment.NewLine);
+
+                // Configurar evento de progresso para logs detalhados
+                hashService.ValidationProgress += (sender, message) =>
+                {
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        _uiService?.AppendOutput(message + Environment.NewLine);
+                    });
+                };
+
+                // Verificar se é arquivo ou diretório
+                bool isFile = File.Exists(sourcePath);
+                bool isDirectory = Directory.Exists(sourcePath);
+
+                HashValidationResult? result = null;
+                string sourceHash = string.Empty;
+                string destHash = string.Empty;
+
+                if (isFile)
+                {
+                    // Validar arquivo individual
+                    var sourceFileName = IOPath.GetFileName(sourcePath);
+                    
+                    string destFile;
+                    if (_isFileMode)
+                    {
+                        destFile = destinationPath;
+                    }
+                    else
+                    {
+                        destFile = IOPath.Combine(destinationPath, sourceFileName);
+                    }
+                    
+                    if (File.Exists(destFile))
+                    {
+                        _uiService?.AppendOutput($"📄 Arquivo: {sourceFileName}" + Environment.NewLine);
+                        _uiService?.AppendOutput($"   Caminho origem : {sourcePath}" + Environment.NewLine);
+                        _uiService?.AppendOutput($"   Caminho destino: {destFile}" + Environment.NewLine);
+                        _uiService?.AppendOutput(Environment.NewLine);
+
+                        // Calcular hashes
+                        _uiService?.AppendOutput("⏳ Calculando hash do arquivo de origem..." + Environment.NewLine);
+                        sourceHash = await hashService.ComputeFileHashAsync(sourcePath, algorithm, cancellationToken);
+                        _uiService?.AppendOutput($"   Hash origem : {sourceHash}" + Environment.NewLine);
+                        _uiService?.AppendOutput(Environment.NewLine);
+                        
+                        _uiService?.AppendOutput("⏳ Calculando hash do arquivo de destino..." + Environment.NewLine);
+                        destHash = await hashService.ComputeFileHashAsync(destFile, algorithm, cancellationToken);
+                        _uiService?.AppendOutput($"   Hash destino: {destHash}" + Environment.NewLine);
+                        _uiService?.AppendOutput(Environment.NewLine);
+                        
+                        bool isValid = string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase);
+                        
+                        if (isValid)
+                        {
+                            _uiService?.AppendOutput("✓ VALIDAÇÃO BEM-SUCEDIDA!" + Environment.NewLine);
+                            _uiService?.AppendOutput("  Os hashes são IDÊNTICOS - Arquivo íntegro" + Environment.NewLine);
+                        }
+                        else
+                        {
+                            _uiService?.AppendOutput("✗ FALHA NA VALIDAÇÃO!" + Environment.NewLine);
+                            _uiService?.AppendOutput("  Os hashes são DIFERENTES - Arquivo corrompido" + Environment.NewLine);
+                            _uiService?.AppendOutput($"  Hash origem : {sourceHash}" + Environment.NewLine);
+                            _uiService?.AppendOutput($"  Hash destino: {destHash}" + Environment.NewLine);
+                        }
+                        _uiService?.AppendOutput(Environment.NewLine);
+
+                        // Atualizar UI com os hashes
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            UpdateHashValidationUI(sourceHash, destHash, isValid, sourceFileName);
+                        });
+                        
+                        result = new HashValidationResult
+                        {
+                            TotalFiles = 1,
+                            ValidFiles = isValid ? 1 : 0,
+                            InvalidFiles = isValid ? 0 : 1
+                        };
+
+                        if (!isValid)
+                        {
+                            result.FailedFiles.Add(sourceFileName);
+                        }
+                    }
+                    else
+                    {
+                        _uiService?.AppendOutput($"✗ ARQUIVO AUSENTE NO DESTINO: {sourceFileName}" + Environment.NewLine);
+                        _uiService?.AppendOutput($"   Caminho esperado: {destFile}" + Environment.NewLine);
+                        _uiService?.AppendOutput(Environment.NewLine);
+                        
+                        // Atualizar UI mostrando arquivo ausente
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            UpdateHashValidationUI(string.Empty, string.Empty, false, sourceFileName, isMissing: true);
+                        });
+                        
+                        result = new HashValidationResult
+                        {
+                            TotalFiles = 1,
+                            MissingFiles = 1
+                        };
+                        result.FailedFiles.Add(sourceFileName);
+                    }
+                }
+                else if (isDirectory)
+                {
+                    // Validar diretório completo
+                    bool recursive = CopySubdirectoriesCheckBox?.IsChecked == true || MirrorCheckBox?.IsChecked == true;
+                    
+                    _uiService?.AppendOutput($"📁 Validando diretório: {IOPath.GetFileName(sourcePath)}" + Environment.NewLine);
+                    _uiService?.AppendOutput($"   Modo: {(recursive ? "Recursivo" : "Apenas nível superior")}" + Environment.NewLine);
+                    _uiService?.AppendOutput(Environment.NewLine);
+                    
+                    result = await hashService.ValidateDirectoryAsync(sourcePath, destinationPath, algorithm, recursive, cancellationToken);
+                    
+                    // Para diretórios, mostrar resumo no card
+                    if (result != null)
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            UpdateHashValidationUIForDirectory(result);
+                        });
+                    }
+                }
+
+                // Exibir resultado
+                if (result != null)
+                {
+                    _uiService?.AppendOutput(Environment.NewLine + "═══════════════════════════════════════════" + Environment.NewLine);
+                    _uiService?.AppendOutput("RESULTADO DA VALIDAÇÃO" + Environment.NewLine);
+                    _uiService?.AppendOutput("═══════════════════════════════════════════" + Environment.NewLine);
+                    _uiService?.AppendOutput(result.GetSummary() + Environment.NewLine);
+                    
+                    if (result.IsSuccess)
+                    {
+                        _uiService?.AppendOutput(Environment.NewLine + "✓ Todos os arquivos foram validados com sucesso!" + Environment.NewLine);
+                        _uiService?.ShowInfoBar("Validação de hash concluída com sucesso!", InfoBarSeverity.Success);
+                    }
+                    else
+                    {
+                        _uiService?.AppendOutput(Environment.NewLine + "✗ FALHAS ENCONTRADAS NA VALIDAÇÃO!" + Environment.NewLine);
+                        
+                        if (result.FailedFiles.Count > 0)
+                        {
+                            _uiService?.AppendOutput(Environment.NewLine + "═══════════════════════════════════════════" + Environment.NewLine);
+                            _uiService?.AppendOutput($"ARQUIVOS COM FALHA ({result.FailedFiles.Count}):" + Environment.NewLine);
+                            _uiService?.AppendOutput("═══════════════════════════════════════════" + Environment.NewLine);
+                            
+                            foreach (var file in result.FailedFiles)
+                            {
+                                _uiService?.AppendOutput($"  ❌ {file}" + Environment.NewLine);
+                            }
+                            _uiService?.AppendOutput("═══════════════════════════════════════════" + Environment.NewLine);
+                            _uiService?.AppendOutput(Environment.NewLine + "⚠️ ATENÇÃO: Os arquivos listados acima NÃO passaram na validação de integridade!" + Environment.NewLine);
+                            _uiService?.AppendOutput("Recomenda-se copiar os arquivos novamente ou investigar problemas de hardware/rede." + Environment.NewLine);
+                        }
+                        
+                        var errorCount = result.InvalidFiles + result.MissingFiles + result.ErrorFiles;
+                        _uiService?.ShowInfoBar($"⚠️ Validação falhou! {errorCount} arquivo(s) com problema. Verifique os logs.", InfoBarSeverity.Error);
+                        
+                        // Exibir diálogo de alerta com a lista de arquivos problemáticos
+                        if (result.FailedFiles.Count > 0)
+                        {
+                            await ShowHashValidationFailureDialogAsync(result);
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _uiService?.AppendOutput(Environment.NewLine + "⊗ Validação de hash cancelada pelo usuário." + Environment.NewLine);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _uiService?.AppendOutput(Environment.NewLine + $"✗ Erro durante validação de hash: {ex.Message}" + Environment.NewLine);
+                _uiService?.ShowInfoBar($"Erro na validação de hash: {ex.Message}", InfoBarSeverity.Error);
+            }
+        }
+
+        /// <summary>
+        /// Atualiza a UI do card de validação de hash para um arquivo individual.
+        /// </summary>
+        private void UpdateHashValidationUI(string sourceHash, string destHash, bool isValid, string fileName, bool isMissing = false)
+        {
+            if (HashValidationCard == null) return;
+
+            HashValidationCard.Visibility = Visibility.Visible;
+
+            if (isMissing)
+            {
+                if (SourceHashText != null) SourceHashText.Text = "N/A";
+                if (DestinationHashText != null) DestinationHashText.Text = "Arquivo não encontrado";
+                
+                if (HashValidationResultBorder != null)
+                    HashValidationResultBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed);
+                
+                if (HashValidationResultIcon != null)
+                    HashValidationResultIcon.Glyph = "\uE783"; // Warning icon
+                
+                if (HashValidationResultText != null)
+                    HashValidationResultText.Text = $"Arquivo ausente: {fileName}";
+            }
+            else
+            {
+                if (SourceHashText != null) SourceHashText.Text = sourceHash;
+                if (DestinationHashText != null) DestinationHashText.Text = destHash;
+
+                if (isValid)
+                {
+                    if (HashValidationResultBorder != null)
+                        HashValidationResultBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.Green);
+                    
+                    if (HashValidationResultIcon != null)
+                        HashValidationResultIcon.Glyph = "\uE73E"; // Checkmark icon
+                    
+                    if (HashValidationResultText != null)
+                        HashValidationResultText.Text = $"✓ Hashes idênticos - {fileName} íntegro";
+                }
+                else
+                {
+                    if (HashValidationResultBorder != null)
+                        HashValidationResultBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    
+                    if (HashValidationResultIcon != null)
+                        HashValidationResultIcon.Glyph = "\uE711"; // Error icon
+                    
+                    if (HashValidationResultText != null)
+                        HashValidationResultText.Text = $"✗ Hashes diferentes - {fileName} corrompido";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Atualiza a UI do card de validação de hash para um diretório.
+        /// </summary>
+        private void UpdateHashValidationUIForDirectory(HashValidationResult result)
+        {
+            if (HashValidationCard == null) return;
+
+            // Armazenar resultado para acesso posterior
+            _lastHashValidationResult = result;
+
+            HashValidationCard.Visibility = Visibility.Visible;
+
+            if (SourceHashText != null) 
+                SourceHashText.Text = $"{result.TotalFiles} arquivo(s) analisado(s)";
+            
+            if (DestinationHashText != null) 
+                DestinationHashText.Text = $"Válidos: {result.ValidFiles} | Inválidos: {result.InvalidFiles} | Ausentes: {result.MissingFiles}";
+
+            if (result.IsSuccess)
+            {
+                if (HashValidationResultBorder != null)
+                {
+                    HashValidationResultBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.Green);
+                    // Remover evento de clique se não há problemas
+                    HashValidationResultBorder.Tapped -= HashValidationResultBorder_Tapped;
+                    HashValidationResultBorder.PointerEntered -= HashValidationResultBorder_PointerEntered;
+                    HashValidationResultBorder.PointerExited -= HashValidationResultBorder_PointerExited;
+                }
+                
+                if (HashValidationResultIcon != null)
+                    HashValidationResultIcon.Glyph = "\uE73E"; // Checkmark icon
+                
+                if (HashValidationResultText != null)
+                    HashValidationResultText.Text = "✓ Todos os arquivos validados com sucesso";
+            }
+            else
+            {
+                if (HashValidationResultBorder != null)
+                {
+                    HashValidationResultBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed);
+                    
+                    // Tornar o card clicável para ver detalhes
+                    HashValidationResultBorder.Tapped -= HashValidationResultBorder_Tapped; // Remove duplicatas
+                    HashValidationResultBorder.Tapped += HashValidationResultBorder_Tapped;
+                    HashValidationResultBorder.PointerEntered -= HashValidationResultBorder_PointerEntered;
+                    HashValidationResultBorder.PointerEntered += HashValidationResultBorder_PointerEntered;
+                    HashValidationResultBorder.PointerExited -= HashValidationResultBorder_PointerExited;
+                    HashValidationResultBorder.PointerExited += HashValidationResultBorder_PointerExited;
+                }
+                
+                if (HashValidationResultIcon != null)
+                    HashValidationResultIcon.Glyph = "\uE783"; // Warning icon
+                
+                if (HashValidationResultText != null)
+                {
+                    var errorCount = result.InvalidFiles + result.MissingFiles + result.ErrorFiles;
+                    HashValidationResultText.Text = $"✗ {errorCount} arquivo(s) com problema (clique para ver lista)";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Manipula o clique no resultado da validação de hash para mostrar detalhes.
+        /// </summary>
+        private async void HashValidationResultBorder_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (_lastHashValidationResult != null && !_lastHashValidationResult.IsSuccess)
+            {
+                await ShowHashValidationFailureDialogAsync(_lastHashValidationResult);
+            }
+        }
+
+        /// <summary>
+        /// Manipula o evento de mouse sobre o card de validação para feedback visual.
+        /// </summary>
+        private void HashValidationResultBorder_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is Border border && _lastHashValidationResult != null && !_lastHashValidationResult.IsSuccess)
+            {
+                Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(Windows.UI.Core.CoreCursorType.Hand, 1);
+                border.Opacity = 0.8;
+            }
+        }
+
+        /// <summary>
+        /// Manipula o evento de mouse saindo do card de validação.
+        /// </summary>
+        private void HashValidationResultBorder_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is Border border)
+            {
+                Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(Windows.UI.Core.CoreCursorType.Arrow, 1);
+                border.Opacity = 1.0;
+            }
         }
 
         #endregion

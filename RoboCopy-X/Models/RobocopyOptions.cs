@@ -1,3 +1,5 @@
+using RoboCopy_X.Services;
+
 namespace RoboCopy_X.Models
 {
     public class RobocopyOptions
@@ -30,5 +32,9 @@ namespace RoboCopy_X.Models
         public bool Verbose { get; set; }
         public bool NoProgress { get; set; }
         public string LogFilePath { get; set; } = string.Empty;
+        
+        // Hash Validation
+        public bool EnableHashValidation { get; set; }
+        public HashValidationService.HashAlgorithmType HashAlgorithm { get; set; } = HashValidationService.HashAlgorithmType.SHA256;
     }
 }
